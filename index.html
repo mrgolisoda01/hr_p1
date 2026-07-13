@@ -827,6 +827,7 @@ function EmptyCard({ children }) {
 function App() {
   const [db, setDb] = useState(null);
   const [session, setSession] = useState(null);
+  const [unlocked, setUnlocked] = useState(false);
   const [ready, setReady] = useState(false);
   const [view, setView] = useState("dashboard");
   const [openPosition, setOpenPosition] = useState(null);
@@ -857,7 +858,8 @@ function App() {
     saveSession(null);
   };
   if (!ready) return /* @__PURE__ */ React.createElement("div", { className: "flex h-screen items-center justify-center bg-slate-50 text-slate-400" }, "Loading\u2026");
-  if (!session) return /* @__PURE__ */ React.createElement(Login, { recruiters: db.recruiters, onLogin: login });
+  if (!unlocked) return /* @__PURE__ */ React.createElement(AppGate, { onUnlock: () => setUnlocked(true) });
+  if (!session) return /* @__PURE__ */ React.createElement(ProfilePicker, { recruiters: db.recruiters, onLogin: login });
   const currentUser = db.recruiters.find((r) => r.id === session.id) || session;
   const isAdmin = currentUser.role === "admin";
   const nav = [
@@ -895,40 +897,49 @@ function App() {
     setView("positions");
   } }), view === "positions" && /* @__PURE__ */ React.createElement(Positions, { db, commit, currentUser, isAdmin, openPosition, setOpenPosition }), view === "talent" && /* @__PURE__ */ React.createElement(TalentPool, { db, commit }), view === "employees" && /* @__PURE__ */ React.createElement(Employees, { db, commit }), view === "appraisals" && /* @__PURE__ */ React.createElement(Appraisals, { db }), view === "settings" && /* @__PURE__ */ React.createElement(Settings, { db, commit, isAdmin, currentUser }))));
 }
-function Login({ recruiters, onLogin }) {
+function AppGate({ onUnlock }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
-  const CREDENTIALS = [
-    { user: "hr", pass: "Goli@123", role: "recruiter" },
-    { user: "admin", pass: "HR@123", role: "admin" }
-  ];
   const submit = () => {
-    const u = username.trim().toLowerCase();
-    const match = CREDENTIALS.find((c) => c.user === u && c.pass === password);
-    if (!match) {
-      setErr("Incorrect username or password.");
-      return;
-    }
-    let target;
-    if (match.role === "admin") {
-      target = recruiters.find((r) => r.role === "admin");
+    if (username.trim().toLowerCase() === "hr" && password === "Goli@123") {
+      setErr("");
+      onUnlock();
     } else {
-      target = { id: "hr-all", name: "HR", role: "admin" };
+      setErr("Incorrect username or password.");
     }
-    if (!target) {
-      setErr("No matching profile is configured. Contact the administrator.");
-      return;
-    }
-    setErr("");
-    onLogin(target);
   };
-  const onKey = (e) => {
-    if (e.key === "Enter") submit();
-  };
+  const onKey = (e) => { if (e.key === "Enter") submit(); };
   return /* @__PURE__ */ React.createElement("div", { className: "flex min-h-screen items-center justify-center bg-slate-900 p-4" }, /* @__PURE__ */ React.createElement("div", { className: "w-full max-w-md rounded-2xl bg-white p-8 shadow-xl" }, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-semibold text-slate-900" }, "Recruitment Tracker"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 text-sm text-slate-500" }, "Sign in to continue."), /* @__PURE__ */ React.createElement("div", { className: "mt-6 space-y-4" }, /* @__PURE__ */ React.createElement(Field, { label: "Username" }, /* @__PURE__ */ React.createElement("input", { value: username, onChange: (e) => { setUsername(e.target.value); setErr(""); }, onKeyDown: onKey, placeholder: "Enter username", autoFocus: true, className: inputCls })), /* @__PURE__ */ React.createElement(Field, { label: "Password" }, /* @__PURE__ */ React.createElement("input", { type: "password", value: password, onChange: (e) => { setPassword(e.target.value); setErr(""); }, onKeyDown: onKey, placeholder: "Enter password", className: inputCls })), err && /* @__PURE__ */ React.createElement("div", { className: "rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-inset ring-red-200" }, err), /* @__PURE__ */ React.createElement(Btn, { onClick: submit, disabled: !username.trim() || !password, className: "w-full" }, "Sign in"))));
 }
+function ProfilePicker({ recruiters, onLogin }) {
+  const [adminFor, setAdminFor] = useState(null);
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const pick = (r) => {
+    if (r.role === "admin") {
+      setAdminFor(r);
+      setPassword("");
+      setErr("");
+    } else {
+      onLogin(r);
+    }
+  };
+  const confirmAdmin = () => {
+    if (password === "HR@123") {
+      onLogin(adminFor);
+    } else {
+      setErr("Incorrect admin password.");
+    }
+  };
+  const onKey = (e) => { if (e.key === "Enter") confirmAdmin(); };
+  if (adminFor) {
+    return /* @__PURE__ */ React.createElement("div", { className: "flex min-h-screen items-center justify-center bg-slate-900 p-4" }, /* @__PURE__ */ React.createElement("div", { className: "w-full max-w-md rounded-2xl bg-white p-8 shadow-xl" }, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-semibold text-slate-900" }, "Admin access"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 text-sm text-slate-500" }, "Enter the admin password to open the admin portal."), /* @__PURE__ */ React.createElement("div", { className: "mt-6 space-y-4" }, /* @__PURE__ */ React.createElement(Field, { label: "Admin password" }, /* @__PURE__ */ React.createElement("input", { type: "password", value: password, onChange: (e) => { setPassword(e.target.value); setErr(""); }, onKeyDown: onKey, placeholder: "Enter admin password", autoFocus: true, className: inputCls })), err && /* @__PURE__ */ React.createElement("div", { className: "rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-inset ring-red-200" }, err), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(Btn, { variant: "ghost", onClick: () => setAdminFor(null) }, "Back"), /* @__PURE__ */ React.createElement(Btn, { onClick: confirmAdmin, disabled: !password, className: "flex-1" }, "Open admin portal")))));
+  }
+  return /* @__PURE__ */ React.createElement("div", { className: "flex min-h-screen items-center justify-center bg-slate-900 p-4" }, /* @__PURE__ */ React.createElement("div", { className: "w-full max-w-md rounded-2xl bg-white p-8 shadow-xl" }, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-semibold text-slate-900" }, "Choose your profile"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 text-sm text-slate-500" }, "Select your name to open your portal."), /* @__PURE__ */ React.createElement("div", { className: "mt-6 space-y-2" }, recruiters.map((r) => /* @__PURE__ */ React.createElement("button", { key: r.id, onClick: () => pick(r), className: "flex w-full items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-left hover:border-indigo-300 hover:bg-indigo-50/40" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-slate-900" }, r.name), /* @__PURE__ */ React.createElement("div", { className: "text-xs capitalize text-slate-400" }, r.role === "admin" ? "admin \u00b7 password required" : r.role)), /* @__PURE__ */ React.createElement("span", { className: "text-slate-300" }, "\u2192"))))));
+}
 function metricsFor(cands, range) {
+
   let interviews = 0;
   cands.forEach((c) => (c.interviews || []).forEach((iv) => {
     if (inRange(iv.date, range)) interviews++;
