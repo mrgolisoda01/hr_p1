@@ -400,6 +400,33 @@ html.hrt-dark #hrt-theme-toggle {
   });
 })();
 </script>
+<div id="hrt-sync-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:2147483646;background:#b91c1c;color:#fff;padding:10px 16px;font-family:system-ui,sans-serif;font-size:14px;font-weight:600;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3)">
+  <span id="hrt-sync-banner-text">Not saved to cloud — your recent changes are only on this device. Check your internet connection.</span>
+</div>
+<script>
+(function () {
+  var failing = false;
+  window.__hrtSyncStatus = function (ok) {
+    var el = document.getElementById("hrt-sync-banner");
+    if (!el) return;
+    if (ok) {
+      if (failing) {
+        failing = false;
+        el.style.background = "#15803d";
+        document.getElementById("hrt-sync-banner-text").textContent = "Reconnected — your changes are now saved to the cloud.";
+        setTimeout(function () { el.style.display = "none"; el.style.background = "#b91c1c"; }, 4000);
+      } else {
+        el.style.display = "none";
+      }
+      return;
+    }
+    failing = true;
+    el.style.background = "#b91c1c";
+    document.getElementById("hrt-sync-banner-text").textContent = "Not saved to cloud — your recent changes are only on this device. Check your internet connection.";
+    el.style.display = "block";
+  };
+})();
+</script>
 <div id="root"></div>
 <script>
 window.addEventListener("DOMContentLoaded", function () {
@@ -483,8 +510,11 @@ window.storage = {
         body: JSON.stringify({ key, value, updated_at: new Date().toISOString() })
       });
       if (!res.ok) throw new Error("UPSERT " + res.status);
+      if (window.__hrtSyncStatus) window.__hrtSyncStatus(true);
     } catch (e) {
-      // Swallow; local mirror already holds the latest value.
+      // The cloud save failed. The local mirror holds the value, but the user
+      // MUST be told, otherwise they keep working on data that never syncs.
+      if (window.__hrtSyncStatus) window.__hrtSyncStatus(false);
     }
     return { key, value };
   },
