@@ -823,19 +823,77 @@ function migrate(db) {
   });
   return { ...db, candidates, futureCandidates: db.futureCandidates || [], seats: void 0 };
 }
+let __hrtLastLoaded = null;
+let __hrtSaveChain = Promise.resolve();
 async function loadDB() {
   try {
     const r = await window.storage.get(DB_KEY);
-    if (r && r.value) return migrate(JSON.parse(r.value));
+    if (r && r.value) {
+      const parsed = migrate(JSON.parse(r.value));
+      __hrtLastLoaded = parsed;
+      return parsed;
+    }
   } catch (e) {
   }
   return null;
 }
+function mergeById(mineArr, theirsArr, minePrevArr) {
+  const mine = mineArr || [];
+  const theirs = theirsArr || [];
+  const minePrev = minePrevArr || [];
+  const prevIds = new Set(minePrev.map((x) => x.id));
+  const mineIds = new Set(mine.map((x) => x.id));
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  mine.forEach((m) => {
+    out.push(m);
+    seen.add(m.id);
+  });
+  theirs.forEach((t) => {
+    if (seen.has(t.id)) return;
+    if (prevIds.has(t.id) && !mineIds.has(t.id)) return;
+    out.push(t);
+    seen.add(t.id);
+  });
+  return out;
+}
+function mergeDb(mine, theirs, minePrev) {
+  if (!theirs) return mine;
+  const prev = minePrev || { candidates: [], positions: [], employees: [], recruiters: [], talentPool: [] };
+  const merged = { ...theirs, ...mine };
+  ["candidates", "positions", "employees", "recruiters", "talentPool", "appraisals"].forEach((k) => {
+    if (Array.isArray(mine[k]) || Array.isArray(theirs[k])) {
+      merged[k] = mergeById(mine[k], theirs[k], prev[k]);
+    }
+  });
+  const a = mine.deletionLog || [];
+  const b = theirs.deletionLog || [];
+  const ids = new Set(a.map((x) => x.id));
+  merged.deletionLog = a.concat(b.filter((x) => !ids.has(x.id)));
+  return merged;
+}
 async function saveDB(db) {
-  try {
-    await window.storage.set(DB_KEY, JSON.stringify(db));
-  } catch (e) {
-  }
+  __hrtSaveChain = __hrtSaveChain.then(async () => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        let remote = null;
+        try {
+          const r = await window.storage.get(DB_KEY);
+          if (r && r.value) remote = migrate(JSON.parse(r.value));
+        } catch (e) {
+        }
+        const merged = mergeDb(db, remote, __hrtLastLoaded);
+        await window.storage.set(DB_KEY, JSON.stringify(merged));
+        __hrtLastLoaded = merged;
+        return;
+      } catch (e) {
+        if (attempt === 2) return;
+        await new Promise((res) => setTimeout(res, 300 * (attempt + 1)));
+      }
+    }
+  }).catch(() => {
+  });
+  return __hrtSaveChain;
 }
 async function loadSession() {
   try {
@@ -928,7 +986,13 @@ function EmptyCard({ children }) {
 function App() {
   const [db, setDb] = useState(null);
   const [session, setSession] = useState(null);
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState(() => {
+    try {
+      return localStorage.getItem("hrt:unlocked:v1") === "1";
+    } catch (e) {
+      return false;
+    }
+  });
   const [ready, setReady] = useState(false);
   const [view, setView] = useState("dashboard");
   const [openPosition, setOpenPosition] = useState(null);
@@ -957,9 +1021,20 @@ function App() {
   const logout = () => {
     setSession(null);
     saveSession(null);
+    try {
+      localStorage.removeItem("hrt:unlocked:v1");
+    } catch (e) {
+    }
+    setUnlocked(false);
   };
   if (!ready) return /* @__PURE__ */ React.createElement("div", { className: "flex h-screen items-center justify-center bg-slate-50 text-slate-400" }, "Loading\u2026");
-  if (!unlocked) return /* @__PURE__ */ React.createElement(AppGate, { onUnlock: () => setUnlocked(true) });
+  if (!unlocked) return /* @__PURE__ */ React.createElement(AppGate, { onUnlock: () => {
+    try {
+      localStorage.setItem("hrt:unlocked:v1", "1");
+    } catch (e) {
+    }
+    setUnlocked(true);
+  } });
   if (!session) return /* @__PURE__ */ React.createElement(ProfilePicker, { recruiters: db.recruiters, onLogin: login });
   const currentUser = db.recruiters.find((r) => r.id === session.id) || session;
   const isAdmin = currentUser.role === "admin";
@@ -1200,10 +1275,27 @@ function Positions({ db, commit, currentUser, isAdmin, openPosition, setOpenPosi
     setOpenPosition(p);
   } }), editing && /* @__PURE__ */ React.createElement(EditPositionModal, { db, commit, position: editing, onClose: () => setEditing(null) }), deleting && /* @__PURE__ */ React.createElement(DeletePositionModal, { db, position: deleting, onClose: () => setDeleting(null), onConfirm: () => {
     const pid = deleting.id;
+    const removed = deleting;
+    const removedCount = db.candidates.filter((c) => c.positionId === pid).length;
     commit((prev) => ({
       ...prev,
       positions: prev.positions.filter((x) => x.id !== pid),
-      candidates: prev.candidates.filter((c) => c.positionId !== pid)
+      candidates: prev.candidates.filter((c) => c.positionId !== pid),
+      deletionLog: [
+        {
+          id: uid(),
+          at: new Date().toISOString(),
+          byId: currentUser.id,
+          byName: currentUser.name,
+          designation: removed.designation || "",
+          department: removed.department || "",
+          state: removed.state || "",
+          city: removed.city || "",
+          openDate: removed.openDate || "",
+          candidatesRemoved: removedCount
+        },
+        ...prev.deletionLog || []
+      ]
     }));
     setDeleting(null);
   } }));
@@ -1569,9 +1661,13 @@ function Appraisals({ db }) {
     perMonth[i] ? /* @__PURE__ */ React.createElement("span", { className: `ml-1 ${i === month ? "text-slate-300" : "text-indigo-500"}` }, perMonth[i]) : ""
   ))), /* @__PURE__ */ React.createElement(SectionTitle, null, "Coming up in ", MONTHS[month], " ", /* @__PURE__ */ React.createElement("span", { className: "ml-1 text-xs font-normal text-slate-400" }, due.length, " employee(s)")), due.length === 0 ? /* @__PURE__ */ React.createElement(EmptyCard, null, "No appraisals fall in ", MONTHS[month], ".") : /* @__PURE__ */ React.createElement("div", { className: "overflow-hidden rounded-xl border border-slate-200 bg-white" }, /* @__PURE__ */ React.createElement("table", { className: "w-full text-sm" }, /* @__PURE__ */ React.createElement("thead", { className: "bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400" }, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Employee"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Department"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Designation"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Joined"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Appraisal date"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Completing"))), /* @__PURE__ */ React.createElement("tbody", { className: "divide-y divide-slate-100" }, due.map(({ e, a }) => /* @__PURE__ */ React.createElement("tr", { key: e.id, className: "hover:bg-slate-50" }, /* @__PURE__ */ React.createElement("td", { className: "px-4 py-3 font-medium text-slate-900" }, e.name), /* @__PURE__ */ React.createElement("td", { className: "px-4 py-3 text-slate-600" }, e.department || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "px-4 py-3 text-slate-600" }, e.designation || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "px-4 py-3 text-slate-600" }, fmt(e.joinDate)), /* @__PURE__ */ React.createElement("td", { className: "px-4 py-3 text-slate-900" }, fmt(a.date)), /* @__PURE__ */ React.createElement("td", { className: "px-4 py-3" }, /* @__PURE__ */ React.createElement(Badge, { tone: "indigo" }, a.years, " year", a.years > 1 ? "s" : ""))))))));
 }
+function DeletionLog({ db }) {
+  const rows = db.deletionLog || [];
+  return /* @__PURE__ */ React.createElement("div", { className: "mt-5 rounded-xl border border-slate-200 bg-white p-4" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-slate-700" }, "Deleted positions"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 text-xs text-slate-500" }, "A permanent record of every position removed, and who removed it."), rows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "mt-3 rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-slate-400" }, "No positions have been deleted.") : /* @__PURE__ */ React.createElement("div", { className: "mt-3 overflow-x-auto" }, /* @__PURE__ */ React.createElement("table", { className: "w-full min-w-[640px] text-left text-sm" }, /* @__PURE__ */ React.createElement("thead", { className: "border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400" }, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", { className: "px-3 py-2 font-medium" }, "Deleted by"), /* @__PURE__ */ React.createElement("th", { className: "px-3 py-2 font-medium" }, "Position"), /* @__PURE__ */ React.createElement("th", { className: "px-3 py-2 font-medium" }, "Location"), /* @__PURE__ */ React.createElement("th", { className: "px-3 py-2 font-medium" }, "Candidates removed"), /* @__PURE__ */ React.createElement("th", { className: "px-3 py-2 font-medium" }, "When"))), /* @__PURE__ */ React.createElement("tbody", { className: "divide-y divide-slate-50" }, rows.map((r) => /* @__PURE__ */ React.createElement("tr", { key: r.id }, /* @__PURE__ */ React.createElement("td", { className: "px-3 py-2 font-medium text-slate-900" }, r.byName || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-2 text-slate-600" }, [r.designation, r.department].filter(Boolean).join(" \xB7 ")), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-2 text-slate-600" }, [r.state, r.city].filter(Boolean).join(", ")), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-2 text-slate-600" }, r.candidatesRemoved || 0), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-2 text-slate-500" }, (r.at || "").slice(0, 10), " ", (r.at || "").slice(11, 16))))))));
+}
 function Settings({ db, commit, isAdmin, currentUser }) {
   const lists = [["states", "States"], ["departments", "Departments"], ["designations", "Designations"]];
-  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Header, { title: "Settings", subtitle: "Team, logins, and the lists used across the app" }), isAdmin && /* @__PURE__ */ React.createElement(TeamManager, { db, commit, currentUser }), /* @__PURE__ */ React.createElement("div", { className: "grid gap-4 md:grid-cols-2" }, lists.map(([key, label]) => /* @__PURE__ */ React.createElement(EditableList, { key, label, items: db.meta[key], onChange: (items) => commit((prev) => ({ ...prev, meta: { ...prev.meta, [key]: items } })) })), /* @__PURE__ */ React.createElement(EditableList, { label: "Offer-declined reasons", items: db.reasons.offerDeclined, onChange: (items) => commit((prev) => ({ ...prev, reasons: { ...prev.reasons, offerDeclined: items } })) }), /* @__PURE__ */ React.createElement(EditableList, { label: "Attrition reasons", items: db.reasons.attrition, onChange: (items) => commit((prev) => ({ ...prev, reasons: { ...prev.reasons, attrition: items } })) })), /* @__PURE__ */ React.createElement("div", { className: "mt-6 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-slate-700" }, "Notification centre"), " \u2014 alert timing and recipients are defined with the HR team, then wired here (offer-target warnings, offer\u2192join follow-ups, and management escalation)."));
+  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Header, { title: "Settings", subtitle: "Team, logins, and the lists used across the app" }), isAdmin && /* @__PURE__ */ React.createElement(TeamManager, { db, commit, currentUser }), /* @__PURE__ */ React.createElement("div", { className: "grid gap-4 md:grid-cols-2" }, lists.map(([key, label]) => /* @__PURE__ */ React.createElement(EditableList, { key, label, items: db.meta[key], onChange: (items) => commit((prev) => ({ ...prev, meta: { ...prev.meta, [key]: items } })) })), /* @__PURE__ */ React.createElement(EditableList, { label: "Offer-declined reasons", items: db.reasons.offerDeclined, onChange: (items) => commit((prev) => ({ ...prev, reasons: { ...prev.reasons, offerDeclined: items } })) }), /* @__PURE__ */ React.createElement(EditableList, { label: "Attrition reasons", items: db.reasons.attrition, onChange: (items) => commit((prev) => ({ ...prev, reasons: { ...prev.reasons, attrition: items } })) })), /* @__PURE__ */ React.createElement("div", { className: "mt-6 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-slate-700" }, "Notification centre"), " \u2014 alert timing and recipients are defined with the HR team, then wired here (offer-target warnings, offer\u2192join follow-ups, and management escalation)."), isAdmin && /* @__PURE__ */ React.createElement(DeletionLog, { db }));
 }
 function TeamManager({ db, commit, currentUser }) {
   const [name, setName] = useState("");
