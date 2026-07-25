@@ -848,97 +848,148 @@ function migrate(db) {
   });
   return { ...db, candidates, futureCandidates: db.futureCandidates || [], seats: void 0 };
 }
-let __hrtLastSaved = { candidates: {}, positions: {}, employees: {}, futureCandidates: {} };
-let __hrtCore = {};
-let __hrtSaveChain = Promise.resolve();
-const REC_KINDS = ["candidates", "positions", "employees", "futureCandidates"];
-const KEY_PREFIX = { candidates: "hrt:cand:", positions: "hrt:pos:", employees: "hrt:emp:", futureCandidates: "hrt:fut:" };
-const CORE_KEY = "hrt:core:v1";
-
-function snapshotArr(arr) {
-  const m = {};
-  (arr || []).forEach((r) => { if (r && r.id != null) m[r.id] = JSON.stringify(r); });
-  return m;
+/* ---------------------------------------------------------------------------
+   REAL TABLE STORAGE
+   Each candidate/position/etc. is its own row in a proper Supabase table.
+   On open we load everything into memory. On every change, saveDB diffs the
+   previous vs next state and writes ONLY the changed rows to their table.
+   A stale browser therefore touches only the rows it actually changed - it
+   can never overwrite records it didn't modify. This ends the revert bug.
+--------------------------------------------------------------------------- */
+const SB_BASE = SUPABASE_URL.replace(/\/+$/, "") + "/rest/v1/";
+async function sbSelect(table) {
+  const res = await fetch(SB_BASE + table + "?select=*", { headers: SB_HEADERS });
+  if (!res.ok) throw new Error("SELECT " + table + " " + res.status);
+  return res.json();
 }
-function coreOf(db) {
-  // Everything that is NOT a per-record array lives together in the core blob.
-  const core = {};
-  Object.keys(db || {}).forEach((k) => {
-    if (REC_KINDS.indexOf(k) === -1) core[k] = db[k];
+async function sbUpsert(table, row) {
+  const res = await fetch(SB_BASE + table + "?on_conflict=id", {
+    method: "POST",
+    headers: { ...SB_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify(row)
   });
-  return core;
+  if (!res.ok) throw new Error("UPSERT " + table + " " + res.status);
 }
+async function sbDelete(table, id) {
+  const res = await fetch(SB_BASE + table + "?id=eq." + encodeURIComponent(id), {
+    method: "DELETE", headers: { ...SB_HEADERS, "Prefer": "return=minimal" }
+  });
+  if (!res.ok) throw new Error("DELETE " + table + " " + res.status);
+}
+
+// ---- Field mapping: app (camelCase) <-> table (snake_case) ----
+function posToRow(p) {
+  return { id: p.id, designation: p.designation, department: p.department, state: p.state,
+    city: p.city || null, quantity: p.quantity || 1, recruiter_id: p.recruiterId || null,
+    open_date: p.openDate || null, founder_round: !!p.founderRound, priority: !!p.priority,
+    updated_at: new Date().toISOString() };
+}
+function rowToPos(r) {
+  return { id: r.id, designation: r.designation, department: r.department, state: r.state,
+    city: r.city || "", quantity: r.quantity || 1, recruiterId: r.recruiter_id || "",
+    openDate: r.open_date || "", founderRound: !!r.founder_round, priority: !!r.priority };
+}
+function candToRow(c) {
+  return { id: c.id, position_id: c.positionId || null, recruiter_id: c.recruiterId || null,
+    name: c.name || "", phone: c.phone || "", email: c.email || "", resume_name: c.resumeName || null,
+    stage: c.stage || "Screening", status: c.status || "active",
+    added_date: c.addedDate || null, shortlisted_date: c.shortlistedDate || null,
+    join_date: c.joinDate || null, offer_date: c.offerDate || null,
+    attrition_date: c.attritionDate || null, rejected_date: c.rejectedDate || null,
+    attrition_reason: c.attritionReason || null, exit_reason: c.exitReason || null,
+    interviews: c.interviews || [], log: c.log || [], updated_at: new Date().toISOString() };
+}
+function rowToCand(r) {
+  return { id: r.id, positionId: r.position_id || "", recruiterId: r.recruiter_id || "",
+    name: r.name || "", phone: r.phone || "", email: r.email || "", resumeName: r.resume_name || "",
+    stage: r.stage || "Screening", status: r.status || "active",
+    addedDate: r.added_date || "", shortlistedDate: r.shortlisted_date || null,
+    joinDate: r.join_date || null, offerDate: r.offer_date || null,
+    attritionDate: r.attrition_date || null, rejectedDate: r.rejected_date || null,
+    attritionReason: r.attrition_reason || null, exitReason: r.exit_reason || null,
+    interviews: r.interviews || [], log: r.log || [] };
+}
+function delToRow(d) {
+  return { id: d.id, by_id: d.byId || null, by_name: d.byName || null, designation: d.designation || null,
+    department: d.department || null, state: d.state || null, city: d.city || null,
+    open_date: d.openDate || null, candidates_removed: d.candidatesRemoved || 0, at: d.at || null };
+}
+function rowToDel(r) {
+  return { id: r.id, byId: r.by_id, byName: r.by_name, designation: r.designation, department: r.department,
+    state: r.state, city: r.city, openDate: r.open_date, candidatesRemoved: r.candidates_removed, at: r.at };
+}
+
+let __hrtPrev = null;
+let __hrtSaveChain = Promise.resolve();
 
 async function loadDB() {
   try {
-    // 1) Load the core blob (recruiters, meta lists, deletionLog, flags).
-    let core = null;
-    try {
-      const r = await window.storage.get(CORE_KEY);
-      if (r && r.value) core = JSON.parse(r.value);
-    } catch (e) {}
-
-    // 2) Load all per-record rows.
-    const db = core ? { ...core } : null;
-    if (db) {
-      for (const kind of REC_KINDS) {
-        const rows = await window.storage.getAll(KEY_PREFIX[kind]);
-        const arr = [];
-        rows.forEach((row) => { try { arr.push(JSON.parse(row.value)); } catch (e) {} });
-        db[kind] = arr;
-        __hrtLastSaved[kind] = snapshotArr(arr);
-      }
-      __hrtCore = coreOf(db);
-      return migrate(db);
-    }
-
-    // 3) No core yet -> first run under the new system. Migrate the OLD blob if present.
-    let legacy = null;
-    try {
-      const r = await window.storage.get(DB_KEY);
-      if (r && r.value) legacy = migrate(JSON.parse(r.value));
-    } catch (e) {}
-    if (legacy) {
-      await saveDB(legacy, true);          // split the legacy blob into per-record rows + core
-      REC_KINDS.forEach((k) => { __hrtLastSaved[k] = snapshotArr(legacy[k]); });
-      __hrtCore = coreOf(legacy);
-      return legacy;
-    }
-    return null;
+    const [recs, poss, cands, dels, settings] = await Promise.all([
+      sbSelect("recruiters"), sbSelect("positions"), sbSelect("candidates"),
+      sbSelect("deletion_log"), sbSelect("app_settings")
+    ]);
+    const meta = (settings.find((s) => s.key === "meta") || {}).value || null;
+    const db = migrate({
+      recruiters: recs.map((r) => ({ id: r.id, name: r.name, role: r.role })),
+      positions: poss.map(rowToPos),
+      candidates: cands.map(rowToCand),
+      employees: (settings.find((s) => s.key === "employees") || {}).value || [],
+      futureCandidates: (settings.find((s) => s.key === "futureCandidates") || {}).value || [],
+      deletionLog: dels.map(rowToDel),
+      meta: meta || undefined
+    });
+    __hrtPrev = { candidates: keyById(db.candidates), positions: keyById(db.positions),
+      deletionLog: keyById(db.deletionLog), employees: JSON.stringify(db.employees || []),
+      futureCandidates: JSON.stringify(db.futureCandidates || []), meta: JSON.stringify(db.meta || {}) };
+    return db;
   } catch (e) {
     return null;
   }
 }
 
-async function saveDB(db, isMigration) {
+function keyById(arr) {
+  const m = {};
+  (arr || []).forEach((r) => { if (r && r.id != null) m[r.id] = JSON.stringify(r); });
+  return m;
+}
+
+async function saveDB(db) {
+  const prev = __hrtPrev || { candidates: {}, positions: {}, deletionLog: {}, employees: "[]", futureCandidates: "[]", meta: "{}" };
   __hrtSaveChain = __hrtSaveChain.then(async () => {
     let anyFail = false;
-    // --- Save changed/added per-record rows, delete removed ones ---
-    for (const kind of REC_KINDS) {
-      const nowSnap = snapshotArr(db[kind]);
-      const prevSnap = __hrtLastSaved[kind] || {};
-      // upsert changed or new
-      for (const id in nowSnap) {
-        if (nowSnap[id] !== prevSnap[id]) {
-          try { await window.storage.set(KEY_PREFIX[kind] + id, nowSnap[id]); }
-          catch (e) { anyFail = true; }
+    const doArr = async (arr, prevMap, table, toRow) => {
+      const now = keyById(arr);
+      for (const id in now) {
+        if (now[id] !== prevMap[id]) {
+          try { await sbUpsert(table, toRow(JSON.parse(now[id]))); } catch (e) { anyFail = true; }
         }
       }
-      // delete records that were removed
-      for (const id in prevSnap) {
-        if (!(id in nowSnap)) {
-          try { await window.storage.delete(KEY_PREFIX[kind] + id); }
-          catch (e) { anyFail = true; }
+      for (const id in prevMap) {
+        if (!(id in now)) {
+          try { await sbDelete(table, id); } catch (e) { anyFail = true; }
         }
       }
-      if (!anyFail) __hrtLastSaved[kind] = nowSnap;
+      return now;
+    };
+    const nowCands = await doArr(db.candidates, prev.candidates, "candidates", candToRow);
+    const nowPos = await doArr(db.positions, prev.positions, "positions", posToRow);
+    const nowDel = await doArr(db.deletionLog, prev.deletionLog, "deletion_log", delToRow);
+    // Small config blobs (employees, futureCandidates, meta) -> app_settings rows, only if changed
+    const empStr = JSON.stringify(db.employees || []);
+    if (empStr !== prev.employees) {
+      try { await sbUpsert("app_settings", { key: "employees", value: db.employees || [] }); } catch (e) { anyFail = true; }
     }
-    // --- Save the core blob only if it changed ---
-    const core = coreOf(db);
-    const coreStr = JSON.stringify(core);
-    if (coreStr !== JSON.stringify(__hrtCore)) {
-      try { await window.storage.set(CORE_KEY, coreStr); __hrtCore = core; }
-      catch (e) { anyFail = true; }
+    const futStr = JSON.stringify(db.futureCandidates || []);
+    if (futStr !== prev.futureCandidates) {
+      try { await sbUpsert("app_settings", { key: "futureCandidates", value: db.futureCandidates || [] }); } catch (e) { anyFail = true; }
+    }
+    const metaStr = JSON.stringify(db.meta || {});
+    if (metaStr !== prev.meta) {
+      try { await sbUpsert("app_settings", { key: "meta", value: db.meta || {} }); } catch (e) { anyFail = true; }
+    }
+    if (!anyFail) {
+      __hrtPrev = { candidates: nowCands, positions: nowPos, deletionLog: nowDel,
+        employees: empStr, futureCandidates: futStr, meta: metaStr };
     }
     if (window.__hrtSyncStatus) window.__hrtSyncStatus(!anyFail);
   }).catch(() => {});
