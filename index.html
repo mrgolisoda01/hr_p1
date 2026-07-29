@@ -876,6 +876,25 @@ async function sbDelete(table, id) {
   });
   if (!res.ok) throw new Error("DELETE " + table + " " + res.status);
 }
+async function saveResumeData(candidateId, name, dataUrl) {
+  // Store the actual resume file in its OWN table, keyed by candidate id.
+  // Kept separate from the candidate row so loading the app stays fast.
+  try {
+    await fetch(SB_BASE + "resumes?on_conflict=candidate_id", {
+      method: "POST",
+      headers: { ...SB_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ candidate_id: candidateId, name: name || "", data: dataUrl || "", updated_at: new Date().toISOString() })
+    });
+  } catch (e) {}
+}
+async function fetchResumeData(candidateId) {
+  try {
+    const res = await fetch(SB_BASE + "resumes?candidate_id=eq." + encodeURIComponent(candidateId) + "&select=name,data", { headers: SB_HEADERS });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows && rows.length ? rows[0] : null;
+  } catch (e) { return null; }
+}
 
 // ---- Field mapping: app (camelCase) <-> table (snake_case) ----
 function posToRow(p) {
@@ -1242,6 +1261,9 @@ function Dashboard({ db, commit, currentUser, isAdmin, goToPosition }) {
   var _a, _b;
   const [period, setPeriod] = useState("month");
   const [pickedDate, setPickedDate] = useState(todayISO());
+  const [tPeriod, setTPeriod] = useState("all");
+  const [tPickedDate, setTPickedDate] = useState(todayISO());
+  const tRange = periodRange(tPeriod, tPickedDate);
   const [flt, setFlt] = useState({ state: "", department: "", recruiter: "", priority: "" });
   const [drill, setDrill] = useState(null);
   const [q, setQ] = useState("");
@@ -1283,6 +1305,22 @@ function Dashboard({ db, commit, currentUser, isAdmin, goToPosition }) {
   const attritionRows = (cands) => cands.filter((c) => inRange(c.attritionDate, range)).map((c) => ({ primary: c.name, secondary: `${posLabel(c)} \xB7 left ${fmt(c.attritionDate)} \xB7 ${c.attritionReason || ""}`, badge: nameOf(c.recruiterId), badgeTone: "red", _c: c }));
   const declinedRows = (cands) => cands.filter((c) => c.status === "offer_declined").map((c) => ({ primary: c.name, secondary: `${posLabel(c)} \xB7 ${c.exitReason || ""}`, badge: nameOf(c.recruiterId), _c: c }));
   const openDrill = (title, rows) => setDrill({ title, subtitle: PERIODS.find((x) => x.value === period).label, rows });
+  const enteredStageInRange = (c, stage, range) => {
+    if (!range || (!range.from && !range.to)) return c.stage === stage && c.status !== "attrition" && c.status !== "rejected" && c.status !== "dropped";
+    return (c.log || []).some((l) => {
+      if (!l || !inRange(l.at, range)) return false;
+      const t = l.text || "";
+      if (stage === "Screening") return t.indexOf("Added to screening") !== -1 || t === "Advanced to Screening";
+      if (stage === "Offer letter released") return t.indexOf("Offer letter released") !== -1 || t === "Advanced to Offer letter released";
+      if (stage === "Joined") return t.indexOf("Joined on") !== -1 || t === "Advanced to Joined";
+      return t === "Advanced to " + stage;
+    });
+  };
+  const enteredAttrInRange = (c) => {
+    if (c.status !== "attrition") return false;
+    if (!tRange || (!tRange.from && !tRange.to)) return true;
+    return inRange(c.attritionDate, tRange);
+  };
   const rowClick = (r) => {
     if (r._c && r._c.id) {
       setDrill(null);
@@ -1327,7 +1365,16 @@ function Dashboard({ db, commit, currentUser, isAdmin, goToPosition }) {
       setOpenCand(c.id);
       setQ("");
     }, className: "flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-slate-50" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-slate-900" }, c.name), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-400" }, c.phone, " \xB7 ", p.designation, " \u2014 ", p.state, " \xB7 ", c.stage)), /* @__PURE__ */ React.createElement(Badge, { tone: (STATUS_META[c.status] || {}).tone || "slate" }, (STATUS_META[c.status] || {}).label || c.status));
-  }))), /* @__PURE__ */ React.createElement("div", { className: "mb-5 grid grid-cols-2 gap-2 md:grid-cols-4" }, /* @__PURE__ */ React.createElement(Select, { value: flt.state, onChange: (v) => setFlt({ ...flt, state: v }), options: db.meta.states, placeholder: "All states" }), /* @__PURE__ */ React.createElement(Select, { value: flt.department, onChange: (v) => setFlt({ ...flt, department: v }), options: db.meta.departments, placeholder: "All departments" }), isAdmin && /* @__PURE__ */ React.createElement(LabeledSelect, { value: flt.recruiter, onChange: (v) => setFlt({ ...flt, recruiter: v }), options: db.recruiters.filter((r) => r.role === "recruiter").map((r) => ({ value: r.id, label: r.name })), placeholder: "All recruiters" }), /* @__PURE__ */ React.createElement(LabeledSelect, { value: flt.priority, onChange: (v) => setFlt({ ...flt, priority: v }), options: [{ value: "priority", label: "Priority only" }, { value: "normal", label: "Normal only" }], placeholder: "Priority + normal" })), isAdmin ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3 lg:grid-cols-4" }, /* @__PURE__ */ React.createElement(Stat, { label: "Open seats", value: overall.openSeats, sub: "still to fill", onClick: () => openDrill("Open seats \u2014 positions still hiring", scopedPositions.filter((p) => posOpen(db, p)).map((p) => ({ primary: `${p.designation} \xB7 ${p.department} \u2014 ${p.state}`, secondary: `${posFilled(db, p)} of ${p.quantity} filled \xB7 owner ${nameOf(p.recruiterId)}`, badge: p.priority ? "Priority" : null, badgeTone: "amber", _c: { positionId: p.id } }))) }), /* @__PURE__ */ React.createElement(Stat, { label: "Positions closed", value: overall.closedPos, sub: "fully filled", onClick: () => openDrill("Closed positions", scopedPositions.filter((p) => !posOpen(db, p) && candsOf(db, p.id).length > 0).map((p) => ({ primary: `${p.designation} \xB7 ${p.department} \u2014 ${p.state}`, secondary: `${p.quantity} filled`, _c: { positionId: p.id } }))) }), /* @__PURE__ */ React.createElement(Stat, { label: "Avg days to offer", value: (_a = overall.avgToOffer) != null ? _a : "\u2014", sub: `target ${OFFER_TARGET_DAYS}d`, tone: overall.avgToOffer > OFFER_TARGET_DAYS ? "red" : void 0 }), /* @__PURE__ */ React.createElement(Stat, { label: "Avg days to join", value: (_b = overall.avgToJoin) != null ? _b : "\u2014", sub: "offer \u2192 joining" })), /* @__PURE__ */ React.createElement("div", { className: "mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4" }, /* @__PURE__ */ React.createElement(Stat, { label: "Attrition rate", value: `${overall.attritionRate}%`, sub: "of joined", tone: overall.attritionRate > 15 ? "red" : void 0, onClick: () => openDrill("Attrition", attritionRows(scopedCands.filter((c) => c.status === "attrition")).length ? scopedCands.filter((c) => c.status === "attrition").map((c) => ({ primary: c.name, secondary: `${posLabel(c)} \xB7 left ${fmt(c.attritionDate)} \xB7 ${c.attritionReason || ""}`, badge: nameOf(c.recruiterId), badgeTone: "red", _c: c })) : []) }), /* @__PURE__ */ React.createElement(Stat, { label: "Offers declined", value: overall.declined, sub: "not attrition", onClick: () => openDrill("Offers declined", declinedRows(scopedCands)) }), /* @__PURE__ */ React.createElement(Stat, { label: "Delayed positions", value: delayed.length, sub: `past ${OFFER_TARGET_DAYS}-day deadline`, tone: delayed.length > 0 ? "red" : void 0, onClick: () => openDrill("Delayed positions", delayed.map(({ p, days }) => ({ primary: `${p.designation} \xB7 ${p.department} \u2014 ${p.state}`, secondary: `owner ${nameOf(p.recruiterId)}`, badge: `Day ${days}`, badgeTone: "red", _c: { positionId: p.id } }))) })), /* @__PURE__ */ React.createElement("div", { className: "mb-3 mt-8 flex flex-wrap items-center justify-between gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-slate-700" }, "Recruiter performance"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-2" }, period === "day" && /* @__PURE__ */ React.createElement("input", { type: "date", value: pickedDate, onChange: (e) => setPickedDate(e.target.value), className: "rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 outline-none" }), /* @__PURE__ */ React.createElement(Segmented, { value: period, onChange: setPeriod, options: PERIODS }))), /* @__PURE__ */ React.createElement("div", { className: "overflow-hidden rounded-xl border border-slate-200 bg-white" }, /* @__PURE__ */ React.createElement("table", { className: "w-full text-sm" }, /* @__PURE__ */ React.createElement("thead", { className: "bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400" }, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Recruiter"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "In screening"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Filters"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Interviews"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Closings"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Attrition"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Resume upload"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Resume rejected"))), /* @__PURE__ */ React.createElement("tbody", { className: "divide-y divide-slate-100" }, db.recruiters.filter((r) => r.role === "recruiter").map((r) => {
+  }))), /* @__PURE__ */ React.createElement("div", { className: "mb-5 grid grid-cols-2 gap-2 md:grid-cols-4" }, /* @__PURE__ */ React.createElement(Select, { value: flt.state, onChange: (v) => setFlt({ ...flt, state: v }), options: db.meta.states, placeholder: "All states" }), /* @__PURE__ */ React.createElement(Select, { value: flt.department, onChange: (v) => setFlt({ ...flt, department: v }), options: db.meta.departments, placeholder: "All departments" }), isAdmin && /* @__PURE__ */ React.createElement(LabeledSelect, { value: flt.recruiter, onChange: (v) => setFlt({ ...flt, recruiter: v }), options: db.recruiters.filter((r) => r.role === "recruiter").map((r) => ({ value: r.id, label: r.name })), placeholder: "All recruiters" }), /* @__PURE__ */ React.createElement(LabeledSelect, { value: flt.priority, onChange: (v) => setFlt({ ...flt, priority: v }), options: [{ value: "priority", label: "Priority only" }, { value: "normal", label: "Normal only" }], placeholder: "Priority + normal" })), isAdmin ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex flex-wrap items-center justify-between gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-slate-700" }, "Pipeline by position"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-2" }, tPeriod === "day" && /* @__PURE__ */ React.createElement("input", { type: "date", value: tPickedDate, onChange: (e) => setTPickedDate(e.target.value), className: "rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 outline-none" }), /* @__PURE__ */ React.createElement(Segmented, { value: tPeriod, onChange: setTPeriod, options: PERIODS }))), /* @__PURE__ */ React.createElement("div", { className: "mb-5 overflow-x-auto rounded-xl border border-slate-200 bg-white" }, /* @__PURE__ */ React.createElement("table", { className: "w-full min-w-[900px] text-sm" }, /* @__PURE__ */ React.createElement("thead", { className: "bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400" }, /* @__PURE__ */ React.createElement("tr", null, ["Position", "Candidates", "Screening", "Shortlisted", "Culture interview", "Skill interview", "Department interview", "Salary discussion", "Offer letter released", "Joined", "Attrition"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, className: "whitespace-nowrap px-3 py-3 font-medium" }, h)))), /* @__PURE__ */ React.createElement("tbody", { className: "divide-y divide-slate-100" }, scopedPositions.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { className: "px-3 py-4 text-slate-400", colSpan: 11 }, "No positions.")) : scopedPositions.map((p) => {
+    const pcands = candsOf(db, p.id);
+    const stageCount = (st) => pcands.filter((c) => enteredStageInRange(c, st, tRange)).length;
+    const attrCount = pcands.filter((c) => enteredAttrInRange(c)).length;
+    const stageCell = (st) => {
+      const n = stageCount(st);
+      return /* @__PURE__ */ React.createElement("td", { key: st, className: "px-3 py-3" }, n > 0 ? /* @__PURE__ */ React.createElement("button", { className: "font-medium text-indigo-600 hover:underline", onClick: () => openDrill(`${p.designation} \u2014 ${st}`, pcands.filter((c) => enteredStageInRange(c, st, tRange)).map((c) => ({ primary: c.name, secondary: `${c.phone || ""}${c.email ? " \xB7 " + c.email : ""}`, badge: nameOf(c.recruiterId), _c: c }))) }, n) : /* @__PURE__ */ React.createElement("span", { className: "text-slate-300" }, "0"));
+    };
+    return /* @__PURE__ */ React.createElement("tr", { key: p.id, className: "align-top" }, /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium text-slate-900" }, p.designation), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-400" }, `${p.department} \u2014 ${p.state}${p.city ? ", " + p.city : ""}`)), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3" }, pcands.length > 0 ? /* @__PURE__ */ React.createElement("button", { className: "font-semibold text-slate-900 hover:underline", onClick: () => openDrill(`${p.designation} \u2014 all candidates`, pcands.map((c) => ({ primary: c.name, secondary: `${c.stage} \xB7 ${c.status}`, badge: nameOf(c.recruiterId), _c: c }))) }, pcands.length) : /* @__PURE__ */ React.createElement("span", { className: "text-slate-300" }, "0")), stageCell("Screening"), stageCell("Shortlisted"), stageCell("Culture interview"), stageCell("Skill interview"), stageCell("Department interview"), stageCell("Salary discussion"), stageCell("Offer letter released"), stageCell("Joined"), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3" }, attrCount > 0 ? /* @__PURE__ */ React.createElement("button", { className: "font-medium text-red-600 hover:underline", onClick: () => openDrill(`${p.designation} \u2014 Attrition`, pcands.filter((c) => enteredAttrInRange(c)).map((c) => ({ primary: c.name, secondary: `left ${fmt(c.attritionDate)}`, badge: nameOf(c.recruiterId), badgeTone: "red", _c: c }))) }, attrCount) : /* @__PURE__ */ React.createElement("span", { className: "text-slate-300" }, "0")));
+  })))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3 lg:grid-cols-4" }, /* @__PURE__ */ React.createElement(Stat, { label: "Open seats", value: overall.openSeats, sub: "still to fill", onClick: () => openDrill("Open seats \u2014 positions still hiring", scopedPositions.filter((p) => posOpen(db, p)).map((p) => ({ primary: `${p.designation} \xB7 ${p.department} \u2014 ${p.state}`, secondary: `${posFilled(db, p)} of ${p.quantity} filled \xB7 owner ${nameOf(p.recruiterId)}`, badge: p.priority ? "Priority" : null, badgeTone: "amber", _c: { positionId: p.id } }))) }), /* @__PURE__ */ React.createElement(Stat, { label: "Positions closed", value: overall.closedPos, sub: "fully filled", onClick: () => openDrill("Closed positions", scopedPositions.filter((p) => !posOpen(db, p) && candsOf(db, p.id).length > 0).map((p) => ({ primary: `${p.designation} \xB7 ${p.department} \u2014 ${p.state}`, secondary: `${p.quantity} filled`, _c: { positionId: p.id } }))) }), /* @__PURE__ */ React.createElement(Stat, { label: "Avg days to offer", value: (_a = overall.avgToOffer) != null ? _a : "\u2014", sub: `target ${OFFER_TARGET_DAYS}d`, tone: overall.avgToOffer > OFFER_TARGET_DAYS ? "red" : void 0 }), /* @__PURE__ */ React.createElement(Stat, { label: "Avg days to join", value: (_b = overall.avgToJoin) != null ? _b : "\u2014", sub: "offer \u2192 joining" })), /* @__PURE__ */ React.createElement("div", { className: "mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4" }, /* @__PURE__ */ React.createElement(Stat, { label: "Attrition rate", value: `${overall.attritionRate}%`, sub: "of joined", tone: overall.attritionRate > 15 ? "red" : void 0, onClick: () => openDrill("Attrition", attritionRows(scopedCands.filter((c) => c.status === "attrition")).length ? scopedCands.filter((c) => c.status === "attrition").map((c) => ({ primary: c.name, secondary: `${posLabel(c)} \xB7 left ${fmt(c.attritionDate)} \xB7 ${c.attritionReason || ""}`, badge: nameOf(c.recruiterId), badgeTone: "red", _c: c })) : []) }), /* @__PURE__ */ React.createElement(Stat, { label: "Offers declined", value: overall.declined, sub: "not attrition", onClick: () => openDrill("Offers declined", declinedRows(scopedCands)) }), /* @__PURE__ */ React.createElement(Stat, { label: "Delayed positions", value: delayed.length, sub: `past ${OFFER_TARGET_DAYS}-day deadline`, tone: delayed.length > 0 ? "red" : void 0, onClick: () => openDrill("Delayed positions", delayed.map(({ p, days }) => ({ primary: `${p.designation} \xB7 ${p.department} \u2014 ${p.state}`, secondary: `owner ${nameOf(p.recruiterId)}`, badge: `Day ${days}`, badgeTone: "red", _c: { positionId: p.id } }))) })), /* @__PURE__ */ React.createElement("div", { className: "mb-3 mt-8 flex flex-wrap items-center justify-between gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-slate-700" }, "Recruiter performance"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-2" }, period === "day" && /* @__PURE__ */ React.createElement("input", { type: "date", value: pickedDate, onChange: (e) => setPickedDate(e.target.value), className: "rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 outline-none" }), /* @__PURE__ */ React.createElement(Segmented, { value: period, onChange: setPeriod, options: PERIODS }))), /* @__PURE__ */ React.createElement("div", { className: "overflow-hidden rounded-xl border border-slate-200 bg-white" }, /* @__PURE__ */ React.createElement("table", { className: "w-full text-sm" }, /* @__PURE__ */ React.createElement("thead", { className: "bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400" }, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Recruiter"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "In screening"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Filters"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Interviews"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Closings"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Attrition"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Resume upload"), /* @__PURE__ */ React.createElement("th", { className: "px-4 py-3 font-medium" }, "Resume rejected"))), /* @__PURE__ */ React.createElement("tbody", { className: "divide-y divide-slate-100" }, db.recruiters.filter((r) => r.role === "recruiter").map((r) => {
     const cs = myCands(r.id);
     const m = metricsFor(cs, range);
     const cell = (val, title, rows) => /* @__PURE__ */ React.createElement("td", { className: "px-4 py-3" }, /* @__PURE__ */ React.createElement("button", { className: "text-slate-900 underline-offset-2 hover:text-indigo-600 hover:underline", onClick: () => openDrill(`${title} \u2014 ${r.name}`, rows) }, val));
@@ -1486,6 +1533,7 @@ function PositionDetail({ db, commit, position, onBack }) {
       log: [{ at: todayISO(), text: `Added to screening` }]
     };
     commit((prev) => ({ ...prev, candidates: [c, ...prev.candidates] }));
+    if (cand.resumeData) saveResumeData(c.id, cand.resumeName, cand.resumeData);
     setAdding(false);
     return null;
   };
@@ -1525,7 +1573,11 @@ function CandidateForm({ onSubmit, onCancel }) {
     setC({ ...c, email: e.target.value });
     setErr("");
   } })), /* @__PURE__ */ React.createElement(Field, { label: "Resume *" }, /* @__PURE__ */ React.createElement("input", { type: "file", onChange: (e) => {
-    setC({ ...c, resumeName: e.target.files && e.target.files[0] && e.target.files[0].name || "" });
+    const file = e.target.files && e.target.files[0];
+    if (!file) { setC({ ...c, resumeName: "", resumeData: "" }); return; }
+    const reader = new FileReader();
+    reader.onload = () => setC((prev) => ({ ...prev, resumeName: file.name, resumeData: reader.result }));
+    reader.readAsDataURL(file);
     setErr("");
   }, className: "w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:text-slate-700" }))), err && /* @__PURE__ */ React.createElement("div", { className: "mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-inset ring-red-200" }, err), /* @__PURE__ */ React.createElement("div", { className: "mt-4 flex justify-end gap-2" }, /* @__PURE__ */ React.createElement(Btn, { variant: "ghost", onClick: onCancel }, "Cancel"), /* @__PURE__ */ React.createElement(Btn, { disabled: missing, onClick: submit }, "Add candidate")));
 }
@@ -1550,6 +1602,54 @@ function Stepper({ stages, c, idx }) {
     return /* @__PURE__ */ React.createElement("div", { key: st, className: "flex gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-center" }, /* @__PURE__ */ React.createElement("div", { className: `flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${current ? "bg-indigo-600 text-white ring-4 ring-indigo-100" : done ? "bg-emerald-500 text-white" : "bg-white text-slate-300 ring-1 ring-inset ring-slate-200"}` }, done ? "\u2713" : current ? "\u25CF" : i + 1), !last && /* @__PURE__ */ React.createElement("div", { className: `w-0.5 flex-1 ${done ? "bg-emerald-300" : "bg-slate-200"}`, style: { minHeight: 22 } })), /* @__PURE__ */ React.createElement("div", { className: `pb-4 ${last ? "" : ""}` }, /* @__PURE__ */ React.createElement("div", { className: `text-sm ${current ? "font-semibold text-indigo-700" : done ? "font-medium text-slate-800" : "text-slate-400"}` }, st), sub && /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-400" }, sub)));
   })));
 }
+function ResumeControls({ candidateId, resumeName, commit }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [localName, setLocalName] = useState(resumeName || "");
+  const fileRef = React.useRef(null);
+  const view = async () => {
+    setMsg(""); setBusy(true);
+    try {
+      const r = await fetchResumeData(candidateId);
+      setBusy(false);
+      if (!r || !r.data) { setMsg("No file stored"); return; }
+      const w = window.open();
+      if (w) { w.document.write('<iframe src="' + r.data + '" style="width:100%;height:100%;border:0"></iframe>'); w.document.title = r.name || "Resume"; }
+    } catch (e) { setBusy(false); setMsg("Could not open"); }
+  };
+  const download = async () => {
+    setMsg(""); setBusy(true);
+    try {
+      const r = await fetchResumeData(candidateId);
+      setBusy(false);
+      if (!r || !r.data) { setMsg("No file stored"); return; }
+      const a = document.createElement("a");
+      a.href = r.data; a.download = r.name || "resume";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } catch (e) { setBusy(false); setMsg("Could not download"); }
+  };
+  const onPick = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setMsg(""); setBusy(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      await saveResumeData(candidateId, file.name, reader.result);
+      setLocalName(file.name);
+      if (commit) commit((prev) => ({ ...prev, candidates: prev.candidates.map((x) => x.id === candidateId ? { ...x, resumeName: file.name } : x) }));
+      setBusy(false); setMsg("Uploaded");
+    };
+    reader.onerror = () => { setBusy(false); setMsg("Upload failed"); };
+    reader.readAsDataURL(file);
+  };
+  const btn = "rounded-lg border px-2 py-1 text-xs font-medium disabled:opacity-50";
+  return /* @__PURE__ */ React.createElement("div", { className: "mt-2 flex flex-wrap items-center gap-2" },
+    localName ? /* @__PURE__ */ React.createElement("button", { onClick: view, disabled: busy, className: btn + " border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100" }, "View resume") : null,
+    localName ? /* @__PURE__ */ React.createElement("button", { onClick: download, disabled: busy, className: btn + " border-slate-200 bg-white text-slate-700 hover:bg-slate-50" }, "Download") : null,
+    /* @__PURE__ */ React.createElement("button", { onClick: () => fileRef.current && fileRef.current.click(), disabled: busy, className: btn + " border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" }, localName ? "Replace resume" : "Upload resume"),
+    /* @__PURE__ */ React.createElement("input", { ref: fileRef, type: "file", onChange: onPick, style: { display: "none" } }),
+    busy ? /* @__PURE__ */ React.createElement("span", { className: "text-xs text-slate-400" }, "Working\u2026") : (msg ? /* @__PURE__ */ React.createElement("span", { className: "text-xs text-slate-500" }, msg) : null));
+}
 function CandidateDrawer({ db, commit, candidateId, position, onClose }) {
   const c = db.candidates.find((x) => x.id === candidateId);
   if (!c) return null;
@@ -1561,7 +1661,7 @@ function CandidateDrawer({ db, commit, candidateId, position, onClose }) {
     ...prev,
     candidates: prev.candidates.map((x) => x.id === c.id ? { ...x, ...patch, log: logEntry ? [{ ...logEntry, at: todayISO() }, ...x.log || []] : x.log } : x)
   }));
-  return /* @__PURE__ */ React.createElement(Modal, { onClose, wide: true }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-start justify-between gap-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-semibold text-slate-900" }, c.name), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-500" }, c.phone || "\u2014", " \xB7 ", c.email || "\u2014", " \xB7 resume: ", c.resumeName || "\u2014"), /* @__PURE__ */ React.createElement("div", { className: "mt-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Badge, { tone: sm.tone }, sm.label), isActive(c) && !c.offerDate && /* @__PURE__ */ React.createElement(Badge, { tone: c1.tone }, c1.label, " / ", OFFER_TARGET_DAYS), c2 && /* @__PURE__ */ React.createElement(Badge, { tone: c2.tone }, c2.label)))), /* @__PURE__ */ React.createElement(Stepper, { stages, c, idx }), isActive(c) && /* @__PURE__ */ React.createElement(StageActions, { db, c, position, stages, idx, update }), c.status === "joined" && /* @__PURE__ */ React.createElement(AttritionAction, { db, commit, c }), /* @__PURE__ */ React.createElement(CandManage, { db, c, position, update }), c.log && c.log.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-6" }, /* @__PURE__ */ React.createElement("div", { className: "mb-2 text-xs font-medium uppercase tracking-wide text-slate-400" }, "Activity"), /* @__PURE__ */ React.createElement("div", { className: "space-y-1" }, c.log.map((l, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "flex items-start gap-2 text-xs text-slate-500" }, /* @__PURE__ */ React.createElement("span", { className: "mt-0.5 text-slate-300" }, fmt(l.at)), /* @__PURE__ */ React.createElement("span", null, l.text))))), /* @__PURE__ */ React.createElement("div", { className: "mt-6 flex justify-end" }, /* @__PURE__ */ React.createElement(Btn, { variant: "ghost", onClick: onClose }, "Close")));
+  return /* @__PURE__ */ React.createElement(Modal, { onClose, wide: true }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-start justify-between gap-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-semibold text-slate-900" }, c.name), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-500" }, c.phone || "\u2014", " \xB7 ", c.email || "\u2014", " \xB7 resume: ", c.resumeName || "\u2014"), /* @__PURE__ */ React.createElement(ResumeControls, { candidateId: c.id, resumeName: c.resumeName, commit }), /* @__PURE__ */ React.createElement("div", { className: "mt-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Badge, { tone: sm.tone }, sm.label), isActive(c) && !c.offerDate && /* @__PURE__ */ React.createElement(Badge, { tone: c1.tone }, c1.label, " / ", OFFER_TARGET_DAYS), c2 && /* @__PURE__ */ React.createElement(Badge, { tone: c2.tone }, c2.label)))), /* @__PURE__ */ React.createElement(Stepper, { stages, c, idx }), isActive(c) && /* @__PURE__ */ React.createElement(StageActions, { db, c, position, stages, idx, update }), c.status === "joined" && /* @__PURE__ */ React.createElement(AttritionAction, { db, commit, c }), /* @__PURE__ */ React.createElement(CandManage, { db, c, position, update }), c.log && c.log.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-6" }, /* @__PURE__ */ React.createElement("div", { className: "mb-2 text-xs font-medium uppercase tracking-wide text-slate-400" }, "Activity"), /* @__PURE__ */ React.createElement("div", { className: "space-y-1" }, c.log.map((l, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "flex items-start gap-2 text-xs text-slate-500" }, /* @__PURE__ */ React.createElement("span", { className: "mt-0.5 text-slate-300" }, fmt(l.at)), /* @__PURE__ */ React.createElement("span", null, l.text))))), /* @__PURE__ */ React.createElement("div", { className: "mt-6 flex justify-end" }, /* @__PURE__ */ React.createElement(Btn, { variant: "ghost", onClick: onClose }, "Close")));
 }
 function NotesBlock({ c, update }) {
   const [text, setText] = useState(c.notes || "");
