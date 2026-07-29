@@ -620,7 +620,19 @@ const SEED = {
   futureCandidates: [],
   employees: []
 };
-const todayISO = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+const todayISO = () => {
+  const d = /* @__PURE__ */ new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+const localISO = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 const uid = () => Math.random().toString(36).slice(2, 10);
 function daysBetween(a, b) {
   if (!a || !b) return null;
@@ -641,18 +653,18 @@ function periodRange(period, pickedDate) {
   if (period === "yesterday") {
     const d = new Date(now);
     d.setDate(d.getDate() - 1);
-    const y = d.toISOString().slice(0, 10);
+    const y = localISO(d);
     return { from: y, to: y };
   }
   if (period === "week") {
     const d = new Date(now);
     const dow = (d.getDay() + 6) % 7;
     d.setDate(d.getDate() - dow);
-    return { from: d.toISOString().slice(0, 10), to: end };
+    return { from: localISO(d), to: end };
   }
   if (period === "month") {
     const d = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { from: d.toISOString().slice(0, 10), to: end };
+    return { from: localISO(d), to: end };
   }
   return { from: null, to: null };
 }
@@ -757,10 +769,10 @@ const EMP_COLUMNS = [
 ];
 function normalizeDate(v) {
   if (!v) return "";
-  if (v instanceof Date && !isNaN(v.getTime())) return v.toISOString().slice(0, 10);
+  if (v instanceof Date && !isNaN(v.getTime())) return localISO(v);
   const s = String(v).trim();
   const d = new Date(s);
-  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  if (!isNaN(d.getTime())) return localISO(d);
   return s;
 }
 function downloadEmployeeTemplate() {
