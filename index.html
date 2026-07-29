@@ -1165,6 +1165,7 @@ function App() {
     ["employees", "Employee master"],
     ["appraisals", "Appraisals"],
     ["funnel", "Recruitment funnel"],
+    ["future", "Future candidates"],
     ["settings", "Settings"]
   ];
   return /* @__PURE__ */ React.createElement("div", { className: "flex min-h-screen bg-slate-50 text-slate-900", style: { fontFamily: "ui-sans-serif, system-ui, sans-serif" } }, /* @__PURE__ */ React.createElement("aside", { className: "hidden w-60 shrink-0 flex-col justify-between bg-slate-900 p-4 text-slate-300 md:flex" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "mb-8 px-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-white" }, "Recruitment Tracker"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-500" }, "Talent Ops")), /* @__PURE__ */ React.createElement("nav", { className: "space-y-1" }, nav.map(([k, label]) => /* @__PURE__ */ React.createElement(
@@ -1192,7 +1193,7 @@ function App() {
   )), /* @__PURE__ */ React.createElement("button", { onClick: logout, className: "ml-auto shrink-0 text-xs text-slate-400" }, "Out")), /* @__PURE__ */ React.createElement("main", { className: "flex-1 px-5 pb-16 pt-16 md:px-8 md:pt-8" }, /* @__PURE__ */ React.createElement("div", { className: "mx-auto max-w-6xl" }, view === "dashboard" && /* @__PURE__ */ React.createElement(Dashboard, { db, commit, currentUser, isAdmin, goToPosition: (p) => {
     setOpenPosition(p);
     setView("positions");
-  } }), view === "positions" && /* @__PURE__ */ React.createElement(Positions, { db, commit, currentUser, isAdmin, openPosition, setOpenPosition }), view === "funnel" && /* @__PURE__ */ React.createElement(Funnel, { db, commit, currentUser, isAdmin }), view === "talent" && /* @__PURE__ */ React.createElement(TalentPool, { db, commit }), view === "employees" && /* @__PURE__ */ React.createElement(Employees, { db, commit }), view === "appraisals" && /* @__PURE__ */ React.createElement(Appraisals, { db }), view === "settings" && /* @__PURE__ */ React.createElement(Settings, { db, commit, isAdmin, currentUser }))));
+  } }), view === "positions" && /* @__PURE__ */ React.createElement(Positions, { db, commit, currentUser, isAdmin, openPosition, setOpenPosition }), view === "future" && /* @__PURE__ */ React.createElement(FutureCandidates, { db, commit, currentUser, isAdmin }), view === "funnel" && /* @__PURE__ */ React.createElement(Funnel, { db, commit, currentUser, isAdmin }), view === "talent" && /* @__PURE__ */ React.createElement(TalentPool, { db, commit }), view === "employees" && /* @__PURE__ */ React.createElement(Employees, { db, commit }), view === "appraisals" && /* @__PURE__ */ React.createElement(Appraisals, { db }), view === "settings" && /* @__PURE__ */ React.createElement(Settings, { db, commit, isAdmin, currentUser }))));
 }
 function AppGate({ onUnlock }) {
   const [username, setUsername] = useState("");
@@ -1740,6 +1741,40 @@ function CandManage({ db, c, position, update }) {
     update(patch, { type: "correction", text: `Stage set to ${t}` });
   };
   return /* @__PURE__ */ React.createElement("div", { className: "mt-5 rounded-xl border border-slate-200 p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-slate-700" }, "Correct or reassign"), /* @__PURE__ */ React.createElement("button", { onClick: () => setOpen(!open), className: "text-xs text-slate-400 hover:text-slate-700" }, open ? "Hide" : "Show")), open && /* @__PURE__ */ React.createElement("div", { className: "mt-3 space-y-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "mb-2 text-xs text-slate-400" }, "Move to another stage \u2014 fixes a wrong click. Going back before the offer reopens the 15-day clock; picking a stage for a rejected candidate brings them back in."), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-end gap-2" }, /* @__PURE__ */ React.createElement(Field, { label: "Set stage to" }, /* @__PURE__ */ React.createElement(Select, { value: target, onChange: setTarget, options: stages })), /* @__PURE__ */ React.createElement(Btn, { size: "sm", variant: "ghost", disabled: target === c.stage && isActive(c), onClick: () => changeStage(target) }, "Apply stage"))), /* @__PURE__ */ React.createElement("div", { className: "border-t border-slate-100 pt-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Reassign this candidate to" }, /* @__PURE__ */ React.createElement(LabeledSelect, { value: c.recruiterId, onChange: (rid) => update({ recruiterId: rid }, { type: "reassign", text: `Reassigned to ${nameOf(rid)}` }), options: recruiters.map((r) => ({ value: r.id, label: r.name })) })))));
+}
+function FutureCandidates({ db, commit, currentUser, isAdmin }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [designation, setDesignation] = useState((db.meta.designations || [])[0] || "");
+  const [state, setState] = useState((db.meta.states || [])[0] || "");
+  const [resumeName, setResumeName] = useState("");
+  const [resumeData, setResumeData] = useState("");
+  const [q, setQ] = useState("");
+  const [msg, setMsg] = useState("");
+  const fileRef = React.useRef(null);
+  const pool = db.futureCandidates || [];
+  const term = q.trim().toLowerCase();
+  const visible = pool.filter((x) => !term || [x.name, x.phone, x.designation, x.state].some((v) => (v || "").toLowerCase().includes(term)));
+  const onPick = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) { setResumeName(""); setResumeData(""); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setResumeName(file.name); setResumeData(reader.result); };
+    reader.readAsDataURL(file);
+  };
+  const save = () => {
+    if (!name.trim() || !phone.trim()) { setMsg("Name and phone are required."); return; }
+    const id = uid();
+    const rec = { id, name: name.trim(), phone: phone.trim(), designation, state, resumeName, addedDate: todayISO() };
+    commit((prev) => ({ ...prev, futureCandidates: [rec, ...(prev.futureCandidates || [])] }));
+    if (resumeData) saveResumeData(id, resumeName, resumeData);
+    setName(""); setPhone(""); setResumeName(""); setResumeData("");
+    if (fileRef.current) fileRef.current.value = "";
+    setMsg("Saved");
+  };
+  const remove = (id) => commit((prev) => ({ ...prev, futureCandidates: (prev.futureCandidates || []).filter((x) => x.id !== id) }));
+  const inp = inputCls;
+  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Header, { title: "Future candidates", subtitle: "Prospects saved for upcoming openings" }), /* @__PURE__ */ React.createElement("div", { className: "mt-4 rounded-xl border border-slate-200 bg-white p-4" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-slate-700" }, "Add a future candidate"), /* @__PURE__ */ React.createElement("div", { className: "mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" }, /* @__PURE__ */ React.createElement(Field, { label: "Name *" }, /* @__PURE__ */ React.createElement("input", { className: inp, value: name, onChange: (e) => { setName(e.target.value); setMsg(""); } })), /* @__PURE__ */ React.createElement(Field, { label: "Phone *" }, /* @__PURE__ */ React.createElement("input", { className: inp, value: phone, onChange: (e) => { setPhone(e.target.value); setMsg(""); } })), /* @__PURE__ */ React.createElement(Field, { label: "Designation" }, /* @__PURE__ */ React.createElement(Select, { value: designation, onChange: setDesignation, options: db.meta.designations })), /* @__PURE__ */ React.createElement(Field, { label: "State" }, /* @__PURE__ */ React.createElement(Select, { value: state, onChange: setState, options: db.meta.states })), /* @__PURE__ */ React.createElement(Field, { label: "Resume" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => fileRef.current && fileRef.current.click(), className: "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100" }, resumeName ? "Change file" : "Upload resume"), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-slate-500" }, resumeName || "No file chosen"), /* @__PURE__ */ React.createElement("input", { ref: fileRef, type: "file", onChange: onPick, style: { display: "none" } })))), /* @__PURE__ */ React.createElement("div", { className: "mt-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Btn, { onClick: save }, "Save future candidate"), msg ? /* @__PURE__ */ React.createElement("span", { className: "text-xs text-slate-500" }, msg) : null)), /* @__PURE__ */ React.createElement("div", { className: "mb-3 mt-6 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-slate-700" }, "Saved future candidates (", visible.length, ")"), /* @__PURE__ */ React.createElement("input", { className: inp + " max-w-xs", placeholder: "Search\u2026", value: q, onChange: (e) => setQ(e.target.value) })), visible.length === 0 ? /* @__PURE__ */ React.createElement(EmptyCard, null, "No future candidates yet.") : /* @__PURE__ */ React.createElement("div", { className: "overflow-x-auto rounded-xl border border-slate-200 bg-white" }, /* @__PURE__ */ React.createElement("table", { className: "w-full min-w-[720px] text-sm" }, /* @__PURE__ */ React.createElement("thead", { className: "bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400" }, /* @__PURE__ */ React.createElement("tr", null, ["Name", "Phone", "Designation", "State", "Resume", "Added", ""].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, className: "px-3 py-3 font-medium" }, h)))), /* @__PURE__ */ React.createElement("tbody", { className: "divide-y divide-slate-100" }, visible.map((x) => /* @__PURE__ */ React.createElement("tr", { key: x.id }, /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3 font-medium text-slate-900" }, x.name), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3 text-slate-600" }, x.phone), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3 text-slate-600" }, x.designation || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3 text-slate-600" }, x.state || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3" }, x.resumeName ? /* @__PURE__ */ React.createElement(ResumeControls, { candidateId: x.id, resumeName: x.resumeName, commit: null }) : /* @__PURE__ */ React.createElement(ResumeControls, { candidateId: x.id, resumeName: "", commit: null })), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3 text-xs text-slate-400" }, fmt(x.addedDate)), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3" }, /* @__PURE__ */ React.createElement("button", { onClick: () => remove(x.id), className: "text-xs text-red-600 hover:underline" }, "Remove"))))))));
 }
 function TalentPool({ db, commit }) {
   const [adding, setAdding] = useState(false);
