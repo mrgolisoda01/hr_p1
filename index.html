@@ -875,7 +875,8 @@ async function sbSelect(table) {
   return res.json();
 }
 async function sbUpsert(table, row) {
-  const res = await fetch(SB_BASE + table + "?on_conflict=id", {
+  const conflictCol = table === "app_settings" ? "key" : (table === "resumes" ? "candidate_id" : "id");
+  const res = await fetch(SB_BASE + table + "?on_conflict=" + conflictCol, {
     method: "POST",
     headers: { ...SB_HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify(row)
