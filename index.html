@@ -981,13 +981,14 @@ async function loadDB() {
       candidates: C.map(rowToCand),
       employees: (S.find((s) => s.key === "employees") || {}).value || [],
       futureCandidates: (S.find((s) => s.key === "futureCandidates") || {}).value || [],
+      targets: (S.find((s) => s.key === "targets") || {}).value || [],
       deletionLog: D.map(rowToDel),
       reasons: safeReasons,
       meta: safeMeta
     });
     __hrtPrev = { candidates: keyById(db.candidates), positions: keyById(db.positions),
       deletionLog: keyById(db.deletionLog), employees: JSON.stringify(db.employees || []),
-      futureCandidates: JSON.stringify(db.futureCandidates || []), meta: JSON.stringify(db.meta || {}), reasons: JSON.stringify(db.reasons || {}) };
+      futureCandidates: JSON.stringify(db.futureCandidates || []), meta: JSON.stringify(db.meta || {}), reasons: JSON.stringify(db.reasons || {}), targets: JSON.stringify(db.targets || []) };
     return db;
   } catch (e) {
     return null;
@@ -1030,6 +1031,10 @@ async function saveDB(db) {
     if (futStr !== prev.futureCandidates) {
       try { await sbUpsert("app_settings", { key: "futureCandidates", value: db.futureCandidates || [] }); } catch (e) { anyFail = true; }
     }
+    const targetsStr = JSON.stringify(db.targets || []);
+    if (targetsStr !== prev.targets) {
+      try { await sbUpsert("app_settings", { key: "targets", value: db.targets || [] }); } catch (e) { anyFail = true; }
+    }
     const metaStr = JSON.stringify(db.meta || {});
     if (metaStr !== prev.meta) {
       try { await sbUpsert("app_settings", { key: "meta", value: db.meta || {} }); } catch (e) { anyFail = true; }
@@ -1040,7 +1045,7 @@ async function saveDB(db) {
     }
     if (!anyFail) {
       __hrtPrev = { candidates: nowCands, positions: nowPos, deletionLog: nowDel,
-        employees: empStr, futureCandidates: futStr, meta: metaStr, reasons: reasonsStr };
+        employees: empStr, futureCandidates: futStr, meta: metaStr, reasons: reasonsStr, targets: targetsStr };
     }
     if (window.__hrtSyncStatus) window.__hrtSyncStatus(!anyFail);
   }).catch(() => {});
@@ -1198,6 +1203,7 @@ function App() {
     ["appraisals", "Appraisals"],
     ["funnel", "Recruitment funnel"],
     ["future", "Future candidates"],
+    ["target", "Target"],
     ["settings", "Settings"]
   ];
   return /* @__PURE__ */ React.createElement("div", { className: "flex min-h-screen bg-slate-50 text-slate-900", style: { fontFamily: "ui-sans-serif, system-ui, sans-serif" } }, /* @__PURE__ */ React.createElement("aside", { className: "hidden w-60 shrink-0 flex-col justify-between bg-slate-900 p-4 text-slate-300 md:flex" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "mb-8 px-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-white" }, "Recruitment Tracker"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-500" }, "Talent Ops")), /* @__PURE__ */ React.createElement("nav", { className: "space-y-1" }, nav.map(([k, label]) => /* @__PURE__ */ React.createElement(
@@ -1225,7 +1231,7 @@ function App() {
   )), /* @__PURE__ */ React.createElement("button", { onClick: logout, className: "ml-auto shrink-0 text-xs text-slate-400" }, "Out")), /* @__PURE__ */ React.createElement("main", { className: "flex-1 px-5 pb-16 pt-16 md:px-8 md:pt-8" }, /* @__PURE__ */ React.createElement("div", { className: "mx-auto max-w-6xl" }, view === "dashboard" && /* @__PURE__ */ React.createElement(Dashboard, { db, commit, currentUser, isAdmin, goToPosition: (p) => {
     setOpenPosition(p);
     setView("positions");
-  } }), view === "positions" && /* @__PURE__ */ React.createElement(Positions, { db, commit, currentUser, isAdmin, openPosition, setOpenPosition }), view === "future" && /* @__PURE__ */ React.createElement(FutureCandidates, { db, commit, currentUser, isAdmin }), view === "funnel" && /* @__PURE__ */ React.createElement(Funnel, { db, commit, currentUser, isAdmin }), view === "talent" && /* @__PURE__ */ React.createElement(TalentPool, { db, commit }), view === "employees" && /* @__PURE__ */ React.createElement(Employees, { db, commit }), view === "appraisals" && /* @__PURE__ */ React.createElement(Appraisals, { db }), view === "settings" && /* @__PURE__ */ React.createElement(Settings, { db, commit, isAdmin, currentUser }))));
+  } }), view === "positions" && /* @__PURE__ */ React.createElement(Positions, { db, commit, currentUser, isAdmin, openPosition, setOpenPosition }), view === "future" && /* @__PURE__ */ React.createElement(FutureCandidates, { db, commit, currentUser, isAdmin }), view === "target" && /* @__PURE__ */ React.createElement(Targets, { db, commit, currentUser, isAdmin }), view === "funnel" && /* @__PURE__ */ React.createElement(Funnel, { db, commit, currentUser, isAdmin }), view === "talent" && /* @__PURE__ */ React.createElement(TalentPool, { db, commit }), view === "employees" && /* @__PURE__ */ React.createElement(Employees, { db, commit }), view === "appraisals" && /* @__PURE__ */ React.createElement(Appraisals, { db }), view === "settings" && /* @__PURE__ */ React.createElement(Settings, { db, commit, isAdmin, currentUser }))));
 }
 function AppGate({ onUnlock }) {
   const [username, setUsername] = useState("");
@@ -1795,6 +1801,144 @@ function CandManage({ db, c, position, update }) {
   };
   return /* @__PURE__ */ React.createElement("div", { className: "mt-5 rounded-xl border border-slate-200 p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-slate-700" }, "Correct or reassign"), /* @__PURE__ */ React.createElement("button", { onClick: () => setOpen(!open), className: "text-xs text-slate-400 hover:text-slate-700" }, open ? "Hide" : "Show")), open && /* @__PURE__ */ React.createElement("div", { className: "mt-3 space-y-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "mb-2 text-xs text-slate-400" }, "Move to another stage \u2014 fixes a wrong click. Going back before the offer reopens the 15-day clock; picking a stage for a rejected candidate brings them back in."), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-end gap-2" }, /* @__PURE__ */ React.createElement(Field, { label: "Set stage to" }, /* @__PURE__ */ React.createElement(Select, { value: target, onChange: setTarget, options: stages })), /* @__PURE__ */ React.createElement(Btn, { size: "sm", variant: "ghost", disabled: target === c.stage && isActive(c), onClick: () => changeStage(target) }, "Apply stage"))), /* @__PURE__ */ React.createElement("div", { className: "border-t border-slate-100 pt-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Reassign this candidate to" }, /* @__PURE__ */ React.createElement(LabeledSelect, { value: c.recruiterId, onChange: (rid) => update({ recruiterId: rid }, { type: "reassign", text: `Reassigned to ${nameOf(rid)}` }), options: recruiters.map((r) => ({ value: r.id, label: r.name })) })))));
 }
+function OverallDashboard({ db, isAdmin, currentUser }) {
+  const STAGES = ["Screening", "Shortlisted", "Culture interview", "Skill interview", "Department interview", "Salary discussion", "Offer letter released", "Joined"];
+  const posOf = (id) => db.positions.find((p) => p.id === id) || null;
+  const posLabel = (p) => p ? `${p.designation} \xB7 ${p.department} \u2014 ${p.state}${p.city ? ", " + p.city : ""}` : "\u2014";
+  const nameOf = (id) => (db.recruiters.find((r) => r.id === id) || {}).name || "\u2014";
+  // Date a candidate reached a given stage, from their activity log.
+  const stageDate = (c, stage) => {
+    const log = c.log || [];
+    let d = null;
+    log.forEach((l) => {
+      if (!l || !l.at) return;
+      const t = l.text || "";
+      let match = false;
+      if (stage === "Screening") match = t.indexOf("Added to screening") !== -1 || t === "Advanced to Screening";
+      else if (stage === "Offer letter released") match = t.indexOf("Offer letter released") !== -1 || t === "Advanced to Offer letter released";
+      else if (stage === "Joined") match = t.indexOf("Joined on") !== -1 || t === "Advanced to Joined";
+      else match = t === "Advanced to " + stage;
+      if (match && (!d || l.at < d)) d = l.at;
+    });
+    return d;
+  };
+  const inWindow = (date, t) => {
+    if (!date) return false;
+    if (t.createdAt && date < t.createdAt) return false;
+    if (t.deadline && date > t.deadline) return false;
+    return true;
+  };
+  // How many of this recruiter's candidates REACHED a stage within the target's window?
+  const stageReached = (t, stage) => {
+    const idx = STAGES.indexOf(stage);
+    return db.candidates.filter((c) => {
+      if (c.positionId !== t.positionId || c.recruiterId !== t.recruiterId) return false;
+      if (c.status === "rejected" || c.status === "dropped") return false;
+      const cur = STAGES.indexOf(c.stage);
+      if (cur < idx) return false;
+      return inWindow(stageDate(c, stage), t);
+    }).length;
+  };
+  const onboarded = (t) => db.candidates.filter((c) => {
+    if (c.positionId !== t.positionId || c.recruiterId !== t.recruiterId || c.status !== "joined") return false;
+    return inWindow(stageDate(c, "Joined") || c.joinDate, t);
+  }).length;
+  let targets = db.targets || [];
+  if (!isAdmin) targets = targets.filter((t) => t.recruiterId === currentUser.id);
+  if (targets.length === 0) {
+    return /* @__PURE__ */ React.createElement("div", { className: "mt-4 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-400" }, "No targets have been set yet.");
+  }
+  const renderTarget = (t) => {
+    const done = onboarded(t);
+    const met = done >= t.count;
+    const stageKeys = t.stages ? Object.keys(t.stages) : [];
+    return /* @__PURE__ */ React.createElement("div", { key: t.id, className: "rounded-xl border border-slate-200 bg-white p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center justify-between gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-slate-900" }, posLabel(posOf(t.positionId)), isAdmin ? /* @__PURE__ */ React.createElement("span", { className: "ml-2 text-xs text-indigo-500" }, nameOf(t.recruiterId)) : null), /* @__PURE__ */ React.createElement("span", { className: "rounded-full px-2 py-0.5 text-xs font-medium " + (met ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700") }, "Onboarded " + done + " / " + t.count)), stageKeys.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" }, stageKeys.map((s) => {
+      const reached = stageReached(t, s);
+      const tgt = t.stages[s];
+      const ok = reached >= tgt;
+      return /* @__PURE__ */ React.createElement("div", { key: s, className: "rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-500" }, s), /* @__PURE__ */ React.createElement("div", { className: "mt-0.5 text-sm font-semibold " + (ok ? "text-emerald-700" : "text-slate-700") }, reached + " / " + tgt));
+    })) : /* @__PURE__ */ React.createElement("div", { className: "mt-2 text-xs text-slate-400" }, "No stage-wise targets set."), t.deadline ? /* @__PURE__ */ React.createElement("div", { className: "mt-2 text-xs text-slate-400" }, "Deadline: " + fmt(t.deadline)) : null);
+  };
+  const weeks = [1, 2, 3, 4];
+  return /* @__PURE__ */ React.createElement("div", { className: "mt-4 space-y-6" }, weeks.map((w) => {
+    const wt = targets.filter((t) => t.week === w);
+    if (wt.length === 0) return null;
+    return /* @__PURE__ */ React.createElement("div", { key: w }, /* @__PURE__ */ React.createElement("div", { className: "mb-2 text-sm font-semibold text-slate-800" }, "Week " + w + " targets"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, wt.map((t) => renderTarget(t))));
+  }));
+}
+
+function TargetList({ db, commit, week, recruiterId, isAdmin, currentUser }) {
+  const posOf = (id) => db.positions.find((p) => p.id === id) || null;
+  const posLabel = (p) => p ? `${p.designation} \xB7 ${p.department} \u2014 ${p.state}${p.city ? ", " + p.city : ""}` : "\u2014";
+  const nameOf = (id) => (db.recruiters.find((r) => r.id === id) || {}).name || "\u2014";
+  // How many candidates has this recruiter onboarded (joined) for this position?
+  const doneCount = (t) => db.candidates.filter((c) => c.positionId === t.positionId && c.recruiterId === t.recruiterId && c.status === "joined").length;
+  let rows = (db.targets || []).filter((t) => t.week === week);
+  if (recruiterId) rows = rows.filter((t) => t.recruiterId === recruiterId);
+  const removeTarget = (id) => commit((prev) => ({ ...prev, targets: (prev.targets || []).filter((t) => t.id !== id) }));
+  if (rows.length === 0) {
+    return /* @__PURE__ */ React.createElement("div", { className: "mt-4 rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-xs text-slate-400" }, "No targets set for Week " + week + (recruiterId ? "." : " yet."));
+  }
+  return /* @__PURE__ */ React.createElement("div", { className: "mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white" }, /* @__PURE__ */ React.createElement("table", { className: "w-full min-w-[640px] text-sm" }, /* @__PURE__ */ React.createElement("thead", { className: "bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400" }, /* @__PURE__ */ React.createElement("tr", null, (isAdmin ? ["Recruiter", "Position", "Target", "Onboarded", "Deadline", ""] : ["Position", "Target", "Onboarded", "Deadline"]).map((h) => /* @__PURE__ */ React.createElement("th", { key: h, className: "px-3 py-3 font-medium" }, h)))), /* @__PURE__ */ React.createElement("tbody", { className: "divide-y divide-slate-100" }, rows.map((t) => {
+    const done = doneCount(t);
+    const met = done >= t.count;
+    return /* @__PURE__ */ React.createElement("tr", { key: t.id }, isAdmin ? /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3 font-medium text-slate-900" }, nameOf(t.recruiterId)) : null, /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3 text-slate-700" }, /* @__PURE__ */ React.createElement("div", null, posLabel(posOf(t.positionId))), t.stages && Object.keys(t.stages).length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-xs text-slate-400" }, Object.keys(t.stages).map((s) => s + ": " + t.stages[s]).join(" \xB7 ")) : null), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3 font-semibold text-slate-900" }, t.count), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3" }, /* @__PURE__ */ React.createElement("span", { className: "rounded-full px-2 py-0.5 text-xs font-medium " + (met ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700") }, done + " / " + t.count)), /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3 text-slate-600" }, t.deadline ? fmt(t.deadline) : "\u2014"), isAdmin ? /* @__PURE__ */ React.createElement("td", { className: "px-3 py-3" }, /* @__PURE__ */ React.createElement("button", { onClick: () => removeTarget(t.id), className: "text-xs text-red-600 hover:underline" }, "Remove")) : null);
+  }))));
+}
+function Targets({ db, commit, currentUser, isAdmin }) {
+  const weeks = [1, 2, 3, 4];
+  const [openWeek, setOpenWeek] = useState(null);
+  const [showOverall, setShowOverall] = useState(false);
+  const [selectedRecruiter, setSelectedRecruiter] = useState("");
+  const [settingTarget, setSettingTarget] = useState(false);
+  const recruiters = isAdmin
+    ? db.recruiters.filter((r) => r.role === "recruiter")
+    : db.recruiters.filter((r) => r.id === currentUser.id);
+  const nameOf = (id) => (db.recruiters.find((r) => r.id === id) || {}).name || "\u2014";
+  const clickWeek = (w) => { setShowOverall(false); setSettingTarget(false); setOpenWeek(openWeek === w ? null : w); setSelectedRecruiter(""); };
+  const cardBtn = (active) => "rounded-xl border p-5 text-left transition w-full " + (active ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40");
+
+  // The Set-target page (opens in the right panel)
+  if (settingTarget) {
+    return /* @__PURE__ */ React.createElement(SetTargetPage, { db, commit, isAdmin, week: openWeek, recruiterId: selectedRecruiter, recruiterName: nameOf(selectedRecruiter), onBack: () => setSettingTarget(false) });
+  }
+
+  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Header, { title: "Target", subtitle: "Weekly recruitment targets" }), /* @__PURE__ */ React.createElement("div", { className: "mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" }, weeks.map((w) => /* @__PURE__ */ React.createElement("button", { key: w, type: "button", onClick: () => clickWeek(w), className: cardBtn(openWeek === w) }, /* @__PURE__ */ React.createElement("div", { className: "text-xs uppercase tracking-wide text-slate-400" }, "Week " + w), /* @__PURE__ */ React.createElement("div", { className: "mt-6 text-sm " + (openWeek === w ? "text-indigo-600" : "text-slate-400") }, openWeek === w ? "Selected \u2193" : "\u2014")))), /* @__PURE__ */ React.createElement("div", { className: "mt-4" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => { setShowOverall(!showOverall); setOpenWeek(null); setSelectedRecruiter(""); }, className: "rounded-xl border p-4 text-sm font-medium transition " + (showOverall ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/40") }, "Overall dashboard")), showOverall ? /* @__PURE__ */ React.createElement(OverallDashboard, { db, isAdmin, currentUser }) : null, openWeek !== null && isAdmin ? /* @__PURE__ */ React.createElement("div", { className: "mt-4 flex flex-wrap items-end gap-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "text-xs font-medium text-slate-500" }, "Recruiter \u2014 Week " + openWeek), /* @__PURE__ */ React.createElement("select", { value: selectedRecruiter, onChange: (e) => setSelectedRecruiter(e.target.value), className: inputCls + " mt-1 w-48" }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Select recruiter"), recruiters.map((r) => /* @__PURE__ */ React.createElement("option", { key: r.id, value: r.id }, r.name)))), /* @__PURE__ */ React.createElement("button", { type: "button", disabled: !selectedRecruiter, onClick: () => setSettingTarget(true), className: "rounded-lg px-3 py-2 text-sm font-medium " + (selectedRecruiter ? "bg-indigo-600 text-white hover:bg-indigo-500" : "bg-slate-100 text-slate-400 cursor-not-allowed") }, "+ Set target")) : null, openWeek !== null ? /* @__PURE__ */ React.createElement("div", { className: "mt-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-slate-700" }, isAdmin ? "Targets \u2014 Week " + openWeek : "Your targets \u2014 Week " + openWeek), /* @__PURE__ */ React.createElement(TargetList, { db, commit, week: openWeek, recruiterId: isAdmin ? selectedRecruiter : currentUser.id, isAdmin, currentUser })) : null);
+}
+function SetTargetPage({ db, commit, isAdmin, week, recruiterId, recruiterName, onBack }) {
+  const STAGES = ["Screening", "Shortlisted", "Culture interview", "Skill interview", "Department interview", "Salary discussion", "Offer letter released", "Joined"];
+  const [checkedPositions, setCheckedPositions] = useState([]);
+  const [count, setCount] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [stageTargets, setStageTargets] = useState({});
+  const [msg, setMsg] = useState("");
+  const posLabel = (p) => `${p.designation} \xB7 ${p.department} \u2014 ${p.state}${p.city ? ", " + p.city : ""}`;
+  const togglePos = (id) => {
+    setMsg("");
+    setCheckedPositions((prev) => prev.indexOf(id) === -1 ? [...prev, id] : prev.filter((x) => x !== id));
+  };
+  const setStage = (stage, val) => setStageTargets((prev) => ({ ...prev, [stage]: val }));
+  const save = () => {
+    if (checkedPositions.length === 0) { setMsg("Please select at least one position."); return; }
+    if (!count || Number(count) < 1) { setMsg("Please enter a target count."); return; }
+    const stages = {};
+    STAGES.forEach((s) => { if (stageTargets[s] && Number(stageTargets[s]) > 0) stages[s] = Number(stageTargets[s]); });
+    commit((prev) => ({ ...prev, targets: [
+      ...checkedPositions.map((pid) => ({ id: uid(), week, recruiterId, positionId: pid, count: Number(count), stages, deadline: deadline || null, createdAt: todayISO() })),
+      ...(prev.targets || [])
+    ] }));
+    setMsg("Target saved");
+    setCheckedPositions([]); setCount(""); setDeadline(""); setStageTargets({});
+  };
+  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "mb-3 text-sm text-indigo-600 hover:underline" }, "\u2190 Back to targets"), /* @__PURE__ */ React.createElement(Header, { title: "Set target", subtitle: `Week ${week} \xB7 ${recruiterName}` }), /* @__PURE__ */ React.createElement("div", { className: "mt-4 max-w-xl rounded-xl border border-slate-200 bg-white p-5" },
+    /* @__PURE__ */ React.createElement("div", { className: "text-xs font-medium text-slate-500" }, "Select position(s) \u2014 tick one or more"),
+    /* @__PURE__ */ React.createElement("div", { className: "mt-2 max-h-56 overflow-y-auto rounded-lg border border-slate-200 p-2" }, db.positions.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "px-2 py-3 text-xs text-slate-400" }, "No positions.") : db.positions.map((p) => /* @__PURE__ */ React.createElement("label", { key: p.id, className: "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: checkedPositions.indexOf(p.id) !== -1, onChange: () => togglePos(p.id), className: "h-4 w-4 rounded border-slate-300" }), /* @__PURE__ */ React.createElement("span", { className: "text-slate-700" }, posLabel(p))))),
+    /* @__PURE__ */ React.createElement("div", { className: "mt-3" }, /* @__PURE__ */ React.createElement(Field, { label: "Target \u2014 count of candidates to onboard & close" }, /* @__PURE__ */ React.createElement("input", { type: "number", min: "1", value: count, onChange: (e) => { setCount(e.target.value); setMsg(""); }, placeholder: "e.g. 5", className: inputCls }))),
+    /* @__PURE__ */ React.createElement("div", { className: "mt-4" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs font-medium text-slate-500" }, "Stage-wise targets (optional)"), /* @__PURE__ */ React.createElement("div", { className: "mt-2 grid grid-cols-2 gap-2" }, STAGES.map((s) => /* @__PURE__ */ React.createElement("div", { key: s }, /* @__PURE__ */ React.createElement("label", { className: "text-xs text-slate-500" }, s), /* @__PURE__ */ React.createElement("input", { type: "number", min: "0", value: stageTargets[s] || "", onChange: (e) => setStage(s, e.target.value), placeholder: "0", className: inputCls + " mt-0.5" }))))),
+    /* @__PURE__ */ React.createElement("div", { className: "mt-5 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Btn, { onClick: save }, "Save target"), /* @__PURE__ */ React.createElement(Btn, { variant: "ghost", onClick: onBack }, "Cancel"), msg ? /* @__PURE__ */ React.createElement("span", { className: "text-xs " + (msg === "Target saved" ? "text-emerald-600" : "text-red-600") }, msg) : null)
+  ), /* @__PURE__ */ React.createElement("div", { className: "mt-6 text-sm font-semibold text-slate-700" }, "Targets set for Week " + week + " \u2014 " + recruiterName), /* @__PURE__ */ React.createElement(TargetList, { db, commit, week, recruiterId, isAdmin, currentUser: null }));
+}
+
 function FutureCandidates({ db, commit, currentUser, isAdmin }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
