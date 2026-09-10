@@ -337,8 +337,23 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
 </script>
 <style>html,body,#root{height:100%;margin:0;background:#f8fafc;}</style>
+<style id="hrt-extra">.font-bold{font-weight:700}.px-1{padding-left:.25rem;padding-right:.25rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.space-y-1\.5>:not([hidden])~:not([hidden]){margin-top:.375rem}.text-base{font-size:1rem;line-height:1.5rem}</style>
 </head>
 <body>
+<script>
+window.addEventListener("error", function (ev) {
+  try {
+    var m = ev && ev.message ? ev.message : String(ev);
+    var where = ev && ev.lineno ? " (line " + ev.lineno + ")" : "";
+    var d = document.getElementById("hrt-err") || document.createElement("div");
+    d.id = "hrt-err";
+    d.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#7f1d1d;color:#fff;padding:10px 14px;font:13px/1.45 system-ui,sans-serif;white-space:pre-wrap";
+    d.textContent = "App error: " + m + where;
+    document.body.appendChild(d);
+  } catch (e) {}
+});
+</script>
+
 <style id="hrt-darkmode-style">
 html.hrt-dark {
   filter: invert(1) hue-rotate(180deg);
@@ -1161,7 +1176,9 @@ function App() {
         await saveDB(d);
       }
       setDb(d);
-      setSession(await loadSession());
+      const sess = await loadSession();
+      setSession(sess);
+      if (sess && sess.role === "recruiter") setView("tva");
       setReady(true);
     })();
   }, []);
@@ -1173,7 +1190,7 @@ function App() {
   const login = (u) => {
     setSession(u);
     saveSession(u);
-    setView("dashboard");
+    setView(u && u.role === "recruiter" ? "tva" : "dashboard");
   };
   const logout = () => {
     setSession(null);
@@ -1204,6 +1221,7 @@ function App() {
     ["funnel", "Recruitment funnel"],
     ["future", "Future candidates"],
     ["target", "Target"],
+    ["tva", "Target vs Achievement"],
     ["settings", "Settings"]
   ];
   return /* @__PURE__ */ React.createElement("div", { className: "flex min-h-screen bg-slate-50 text-slate-900", style: { fontFamily: "ui-sans-serif, system-ui, sans-serif" } }, /* @__PURE__ */ React.createElement("aside", { className: "hidden w-60 shrink-0 flex-col justify-between bg-slate-900 p-4 text-slate-300 md:flex" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "mb-8 px-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-white" }, "Recruitment Tracker"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-500" }, "Talent Ops")), /* @__PURE__ */ React.createElement("nav", { className: "space-y-1" }, nav.map(([k, label]) => /* @__PURE__ */ React.createElement(
@@ -1228,10 +1246,10 @@ function App() {
       className: `whitespace-nowrap rounded-lg px-2.5 py-1 text-xs ${view === k ? "bg-slate-900 text-white" : "text-slate-500"}`
     },
     l
-  )), /* @__PURE__ */ React.createElement("button", { onClick: logout, className: "ml-auto shrink-0 text-xs text-slate-400" }, "Out")), /* @__PURE__ */ React.createElement("main", { className: "flex-1 px-5 pb-16 pt-16 md:px-8 md:pt-8" }, /* @__PURE__ */ React.createElement("div", { className: "mx-auto max-w-6xl" }, view === "dashboard" && /* @__PURE__ */ React.createElement(Dashboard, { db, commit, currentUser, isAdmin, goToPosition: (p) => {
+  )), /* @__PURE__ */ React.createElement("button", { onClick: logout, className: "ml-auto shrink-0 text-xs text-slate-400" }, "Out")), /* @__PURE__ */ React.createElement("main", { className: "flex-1 px-5 pb-16 pt-16 md:px-8 md:pt-8" }, /* @__PURE__ */ React.createElement("div", { className: "mx-auto max-w-6xl" }, view === "dashboard" && /* @__PURE__ */ React.createElement(HrtDashboard, { db, currentUser, isAdmin, setView, goToPosition: (p) => {
     setOpenPosition(p);
     setView("positions");
-  } }), view === "positions" && /* @__PURE__ */ React.createElement(Positions, { db, commit, currentUser, isAdmin, openPosition, setOpenPosition }), view === "future" && /* @__PURE__ */ React.createElement(FutureCandidates, { db, commit, currentUser, isAdmin }), view === "target" && /* @__PURE__ */ React.createElement(Targets, { db, commit, currentUser, isAdmin }), view === "funnel" && /* @__PURE__ */ React.createElement(Funnel, { db, commit, currentUser, isAdmin }), view === "talent" && /* @__PURE__ */ React.createElement(TalentPool, { db, commit }), view === "employees" && /* @__PURE__ */ React.createElement(Employees, { db, commit }), view === "appraisals" && /* @__PURE__ */ React.createElement(Appraisals, { db }), view === "settings" && /* @__PURE__ */ React.createElement(Settings, { db, commit, isAdmin, currentUser }))));
+  } }), view === "positions" && /* @__PURE__ */ React.createElement(Positions, { db, commit, currentUser, isAdmin, openPosition, setOpenPosition }), view === "future" && /* @__PURE__ */ React.createElement(FutureCandidates, { db, commit, currentUser, isAdmin }), view === "target" && /* @__PURE__ */ React.createElement(Targets, { db, commit, currentUser, isAdmin }), view === "funnel" && /* @__PURE__ */ React.createElement(Funnel, { db, commit, currentUser, isAdmin }), view === "talent" && /* @__PURE__ */ React.createElement(TalentPool, { db, commit }), view === "employees" && /* @__PURE__ */ React.createElement(Employees, { db, commit }), view === "appraisals" && /* @__PURE__ */ React.createElement(Appraisals, { db }), view === "tva" && /* @__PURE__ */ React.createElement(TargetVsAchievement, { db, commit, currentUser, isAdmin }), view === "settings" && /* @__PURE__ */ React.createElement(Settings, { db, commit, isAdmin, currentUser }))));
 }
 function AppGate({ onUnlock }) {
   const [username, setUsername] = useState("");
@@ -1428,12 +1446,76 @@ function Dashboard({ db, commit, currentUser, isAdmin, goToPosition }) {
     return c && p ? /* @__PURE__ */ React.createElement(CandidateDrawer, { db, commit, candidateId: openCand, position: p, onClose: () => setOpenCand(null) }) : null;
   })());
 }
+function hrtLevel(name) {
+  var n = (name || "").toLowerCase();
+  if (n.indexOf("job") >= 0) return 0;
+  if (n.indexOf("screen") >= 0) return 1;
+  if (n.indexOf("shortlist") >= 0) return 2;
+  if (n.indexOf("interview 1") >= 0 || n.indexOf("culture") >= 0 || n.indexOf("skill") >= 0) return 3;
+  if (n.indexOf("interview 2") >= 0 || n.indexOf("department") >= 0 || n.indexOf("founder") >= 0) return 4;
+  if (n.indexOf("salary") >= 0) return 5;
+  if (n.indexOf("offer") >= 0) return 6;
+  if (n.indexOf("join") >= 0) return 7;
+  return -1;
+}
+function hrtTimeline(db) {
+  var t = db && db.meta && db.meta.stageTimeline;
+  if (t && t.length) return t;
+  return [{ stage: "Job post", days: 2, count: 0 }, { stage: "Screening", days: 3, count: 15 }, { stage: "Shortlisting", days: 4, count: 0 }, { stage: "Interview 1", days: 2, count: 0 }, { stage: "Interview 2", days: 2, count: 0 }, { stage: "Salary discussion", days: 2, count: 0 }, { stage: "Offer sent", days: 2, count: 0 }, { stage: "Joining", days: 0, count: 0 }];
+}
+function hrtTotalDays(db) { return hrtTimeline(db).reduce(function (n, r) { return n + (Number(r.days) || 0); }, 0); }
+function hrtAddDays(iso, n) { var str = String(iso || ""); var d = new Date(str); if (isNaN(d.getTime())) { d = new Date(str.slice(0, 10)); } if (isNaN(d.getTime())) return str; d.setDate(d.getDate() + (Number(n) || 0)); try { return d.toISOString().slice(0, 10); } catch (e) { return str; } }
+function hrtPosSLA(db, p) {
+  var tl = hrtTimeline(db);
+  var cands = candsOf(db, p.id).filter(function (c) { return ["rejected", "dropped", "offer_declined", "attrition"].indexOf(c.status) < 0; });
+  var today = todayISO(); var cum = 0; var stages = []; var posColor = "green"; var posOver = 0; var found = false;
+  if (!p || !p.openDate) { return { color: "green", over: 0, stages: tl.map(function (r) { return { stage: r.stage, target: "", reached: false, over: 0, color: "grey", lastDate: "" }; }) }; }
+  for (var i = 0; i < tl.length; i++) {
+    var r = tl[i]; cum += Number(r.days) || 0;
+    var target = hrtAddDays(p.openDate, cum); var lvl = hrtLevel(r.stage);
+    var reached = lvl === 0 ? true : (lvl >= 0 && cands.some(function (c) { return hrtLevel(c.stage) >= lvl; }));
+    var lastDate = "";
+    if (reached) { cands.forEach(function (c) { if (hrtLevel(c.stage) >= lvl) { var d = hrtCandLastDate(c); if (d > lastDate) lastDate = d; } }); if (lvl === 0) lastDate = p.openDate; }
+    var over = reached ? 0 : Math.max(0, daysBetween(target, today) || 0);
+    var color = reached ? "green" : (today <= target ? "grey" : (over <= 2 ? "yellow" : "red"));
+    stages.push({ stage: r.stage, target: target, reached: reached, over: over, color: color, lastDate: lastDate });
+    if (!reached && !found) { found = true; if (today > target) { posOver = over; posColor = over <= 2 ? "yellow" : "red"; } else { posColor = "green"; } }
+  }
+  if (!found) posColor = "done";
+  return { color: posColor, over: posOver, stages: stages };
+}
+function hrtPosState(db, p) {
+  if (p.tempClosed) return { bg: "#fef9c3", bar: "#ca8a04", text: "#713f12", icon: "\u23F8", label: "Temporarily closed" };
+  if (p.closed || !posOpen(db, p)) return { bg: "#dcfce7", bar: "#15803d", text: "#14532d", icon: "\u2713", label: "Filled / closed" };
+  var sx = hrtPosSLA(db, p);
+  if (sx.color === "yellow") return { bg: "#eab308", bar: "#713f12", text: "#1c1917", icon: "", label: "+" + sx.over + " day(s) over target" };
+  if (sx.color === "red") return { bg: "#dc2626", bar: "#7f1d1d", text: "#ffffff", icon: "\u26A0", label: "Stuck \u00B7 +" + sx.over + " days over" };
+  return { bg: "#16a34a", bar: "#14532d", text: "#ffffff", icon: "", label: "On target" };
+}
 function Positions({ db, commit, currentUser, isAdmin, openPosition, setOpenPosition }) {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [editing, setEditing] = useState(null);
   const [q, setQ] = useState("");
-  const [f, setF] = useState({ state: "", department: "", recruiter: "", stage: "", status: "", priority: "" });
+  const [f, setF] = useState({ state: "", department: "", recruiter: "", stage: "", status: "", priority: "", designation: "", city: "" });
+  const [ticked, setTicked] = useState(() => new Set());
+  const [bulkRecr, setBulkRecr] = useState("");
+  const [health, setHealth] = useState("");
+  const HEALTH_COLORS = { green: "#16a34a", yellow: "#eab308", orange: "#f97316", red: "#dc2626" };
+  const TD = hrtTotalDays(db);
+  const HEALTH_BG = { green: "#86efac", yellow: "#fde047", orange: "#fb923c", red: "#f87171" };
+  const HEALTH_BAR = { green: "#15803d", yellow: "#a16207", orange: "#c2410c", red: "#b91c1c" };
+  const posClockStopped = (p) => p.closed || p.tempClosed || !posOpen(db, p);
+  const healthOf = (p) => { if (posClockStopped(p)) return null; const cc = hrtPosSLA(db, p).color; return cc === "done" ? "green" : cc; };
+  const posDeadline = (p) => fmt(hrtAddDays(p.openDate, hrtTotalDays(db)));
+  const posStatus = (p) => posClockStopped(p) ? "Closed" : (daysBetween(p.openDate, todayISO()) > OFFER_TARGET_DAYS ? "Delayed" : "In progress");
+  const applyReassign = () => {
+    if (!bulkRecr || ticked.size === 0) return;
+    const ids = ticked;
+    commit((prev) => ({ ...prev, positions: prev.positions.map((x) => ids.has(x.id) ? { ...x, recruiterId: bulkRecr } : x), candidates: prev.candidates.map((c) => ids.has(c.positionId) ? { ...c, recruiterId: bulkRecr, log: [{ at: todayISO(), text: `Reassigned to ${nameOf(bulkRecr)}` }, ...c.log || []] } : c) }));
+    setTicked(new Set());
+    setBulkRecr("");
+  };
   const nameOf = (id) => (db.recruiters.find((r) => r.id === id) || {}).name || "\u2014";
   const term = q.trim().toLowerCase();
   const candMatches = (c) => [c.name, c.phone, c.email].some((v) => (v || "").toLowerCase().includes(term));
@@ -1442,6 +1524,8 @@ function Positions({ db, commit, currentUser, isAdmin, openPosition, setOpenPosi
     if (!isAdmin && p.recruiterId !== currentUser.id) return false;
     if (f.state && p.state !== f.state) return false;
     if (f.department && p.department !== f.department) return false;
+    if (f.designation && p.designation !== f.designation) return false;
+    if (f.city && (p.city || "").trim() !== f.city) return false;
     if (f.recruiter && p.recruiterId !== f.recruiter) return false;
     if (f.stage && !candsOf(db, p.id).some((c) => isActive(c) && c.stage === f.stage)) return false;
     if (f.status === "open" && (!posOpen(db, p) || p.closed || p.tempClosed || (posOfferOut(db, p) && !candsOf(db, p.id).some((c) => c.status === "joined")))) return false;
@@ -1453,17 +1537,23 @@ function Positions({ db, commit, currentUser, isAdmin, openPosition, setOpenPosi
     if (term && !(posText(p) || candsOf(db, p.id).some(candMatches))) return false;
     return true;
   });
+  filtered.sort((a, b) => (a.state || "").localeCompare(b.state || "") || (a.designation || "").localeCompare(b.designation || ""));
+  const hc = { green: 0, yellow: 0, red: 0 };
+  filtered.forEach((p) => { const bk = healthOf(p); if (bk) hc[bk]++; });
+  const hTotal = hc.green + hc.yellow + hc.red;
+  const shown = health ? filtered.filter((p) => healthOf(p) === health) : filtered;
   if (openPosition) {
     const fresh = db.positions.find((x) => x.id === openPosition.id) || openPosition;
     return /* @__PURE__ */ React.createElement(PositionDetail, { db, commit, position: fresh, onBack: () => setOpenPosition(null) });
   }
-  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Header, { title: "Positions", subtitle: "Every opening and its candidates", action: /* @__PURE__ */ React.createElement(Btn, { onClick: () => setCreating(true) }, "New position") }), /* @__PURE__ */ React.createElement("input", { value: q, onChange: (e) => setQ(e.target.value), placeholder: "Search candidate name, phone, or email\u2026", className: `${inputCls} mb-3` }), /* @__PURE__ */ React.createElement("div", { className: "mb-4 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6" }, /* @__PURE__ */ React.createElement(Select, { value: f.state, onChange: (v) => setF({ ...f, state: v }), options: db.meta.states, placeholder: "All states" }), /* @__PURE__ */ React.createElement(Select, { value: f.department, onChange: (v) => setF({ ...f, department: v }), options: db.meta.departments, placeholder: "All departments" }), /* @__PURE__ */ React.createElement(LabeledSelect, { value: f.recruiter, onChange: (v) => setF({ ...f, recruiter: v }), options: db.recruiters.filter((r) => r.role === "recruiter").map((r) => ({ value: r.id, label: r.name })), placeholder: "All recruiters" }), /* @__PURE__ */ React.createElement(Select, { value: f.stage, onChange: (v) => setF({ ...f, stage: v }), options: ALL_STAGE_OPTIONS, placeholder: "Any stage" }), /* @__PURE__ */ React.createElement(LabeledSelect, { value: f.priority, onChange: (v) => setF({ ...f, priority: v }), options: [{ value: "priority", label: "Priority only" }, { value: "normal", label: "Normal only" }], placeholder: "Priority + normal" }), /* @__PURE__ */ React.createElement(LabeledSelect, { value: f.status, onChange: (v) => setF({ ...f, status: v }), options: [{ value: "open", label: "Open" }, { value: "closed", label: "Closed" }, { value: "temp_closed", label: "Temporary closed" }, { value: "yet_to_join", label: "Yet to join" }], placeholder: "Any status" })), f.stage && /* @__PURE__ */ React.createElement("div", { className: "-mt-2 mb-3 text-xs text-slate-400" }, "Showing positions with a candidate at \u201C", f.stage, "\u201D."), filtered.length === 0 ? /* @__PURE__ */ React.createElement(EmptyCard, null, "No positions match. Create one with \u201CNew position\u201D.") : /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, filtered.map((p) => {
+  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Header, { title: "Positions", subtitle: "Every opening and its candidates", action: /* @__PURE__ */ React.createElement(Btn, { onClick: () => setCreating(true) }, "New position") }), /* @__PURE__ */ React.createElement("input", { value: q, onChange: (e) => setQ(e.target.value), placeholder: "Search candidate name, phone, or email\u2026", className: `${inputCls} mb-3` }), /* @__PURE__ */ React.createElement("div", { className: "mb-4 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6" }, /* @__PURE__ */ React.createElement(Select, { value: f.state, onChange: (v) => setF({ ...f, state: v }), options: db.meta.states, placeholder: "All states" }), /* @__PURE__ */ React.createElement(Select, { value: f.department, onChange: (v) => setF({ ...f, department: v }), options: db.meta.departments, placeholder: "All departments" }), /* @__PURE__ */ React.createElement(Select, { value: f.designation, onChange: (v) => setF({ ...f, designation: v }), options: [...new Set(db.positions.map((p) => p.designation).filter(Boolean))].sort(), placeholder: "All positions" }), /* @__PURE__ */ React.createElement(Select, { value: f.city, onChange: (v) => setF({ ...f, city: v }), options: [...new Set(db.positions.map((p) => (p.city || "").trim()).filter(Boolean))].sort(), placeholder: "All cities" }), /* @__PURE__ */ React.createElement(LabeledSelect, { value: f.recruiter, onChange: (v) => setF({ ...f, recruiter: v }), options: db.recruiters.filter((r) => r.role === "recruiter").map((r) => ({ value: r.id, label: r.name })), placeholder: "All recruiters" }), /* @__PURE__ */ React.createElement(Select, { value: f.stage, onChange: (v) => setF({ ...f, stage: v }), options: ALL_STAGE_OPTIONS, placeholder: "Any stage" }), /* @__PURE__ */ React.createElement(LabeledSelect, { value: f.priority, onChange: (v) => setF({ ...f, priority: v }), options: [{ value: "priority", label: "Priority only" }, { value: "normal", label: "Normal only" }], placeholder: "Priority + normal" }), /* @__PURE__ */ React.createElement(LabeledSelect, { value: f.status, onChange: (v) => setF({ ...f, status: v }), options: [{ value: "open", label: "Open" }, { value: "closed", label: "Closed" }, { value: "temp_closed", label: "Temporary closed" }, { value: "yet_to_join", label: "Yet to join" }], placeholder: "Any status" })), f.stage && /* @__PURE__ */ React.createElement("div", { className: "-mt-2 mb-3 text-xs text-slate-400" }, "Showing positions with a candidate at \u201C", f.stage, "\u201D."), hTotal > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-3 rounded-xl border border-slate-200 bg-white px-4 py-3" }, /* @__PURE__ */ React.createElement("div", { className: "mb-2 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-medium text-slate-700" }, "Recruitment health"), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-slate-400" }, hTotal, " open")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", height: "12px", overflow: "hidden", borderRadius: "9999px", background: "#e2e8f0" } }, ["green", "yellow", "red"].map((k) => hc[k] > 0 && /* @__PURE__ */ React.createElement("div", { key: k, onClick: () => setHealth(health === k ? "" : k), style: { width: hc[k] / hTotal * 100 + "%", background: HEALTH_COLORS[k], cursor: "pointer", opacity: health && health !== k ? 0.35 : 1 } }))), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", marginTop: "8px" } }, [["green", "On target"], ["yellow", "Slipping (+1\u20132)"], ["red", "Stuck (+3 or more)"]].map((kv) => /* @__PURE__ */ React.createElement("button", { key: kv[0], type: "button", onClick: () => setHealth(health === kv[0] ? "" : kv[0]), className: "flex items-center gap-2 text-xs " + (health === kv[0] ? "font-semibold" : "") }, /* @__PURE__ */ React.createElement("span", { style: { width: "10px", height: "10px", borderRadius: "3px", background: HEALTH_COLORS[kv[0]], display: "inline-block" } }), /* @__PURE__ */ React.createElement("span", { className: "text-slate-500" }, kv[1]), /* @__PURE__ */ React.createElement("span", { className: "ml-auto font-medium text-slate-700" }, hc[kv[0]])))), health && /* @__PURE__ */ React.createElement("div", { className: "mt-2 cursor-pointer text-xs text-indigo-600", onClick: () => setHealth("") }, "Showing ", health, " only - tap to clear")), (isAdmin && shown.length > 0) && /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-indigo-300 bg-white px-3 py-2" }, /* @__PURE__ */ React.createElement("label", { className: "flex items-center gap-2 text-xs font-medium text-slate-600" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", className: "h-4 w-4 accent-indigo-600", checked: shown.every((p) => ticked.has(p.id)), onChange: (e) => { const nx = new Set(ticked); if (e.target.checked) shown.forEach((p) => nx.add(p.id)); else shown.forEach((p) => nx.delete(p.id)); setTicked(nx); } }), "Select all"), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-slate-400" }, ticked.size, " ticked"), /* @__PURE__ */ React.createElement("select", { value: bulkRecr, onChange: (e) => setBulkRecr(e.target.value), className: inputCls + " ml-auto", style: { width: "auto", height: "34px" } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Reassign to…"), db.recruiters.filter((r) => r.role === "recruiter").map((r) => /* @__PURE__ */ React.createElement("option", { key: r.id, value: r.id }, r.name))), /* @__PURE__ */ React.createElement("button", { disabled: !(ticked.size > 0 && bulkRecr), onClick: applyReassign, className: "rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40" }, "Apply")), shown.length === 0 ? /* @__PURE__ */ React.createElement(EmptyCard, null, "No positions match. Create one with \u201CNew position\u201D.") : /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, shown.map((p) => {
     const cs = candsOf(db, p.id);
     const filled = posFilled(db, p);
     const open = posOpen(db, p);
     const days = daysBetween(p.openDate, todayISO());
     const late = open && !posOfferOut(db, p) && days > OFFER_TARGET_DAYS;
-    return /* @__PURE__ */ React.createElement("div", { key: p.id, className: "flex w-full flex-col gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-indigo-300 sm:flex-row sm:items-center sm:justify-between" }, /* @__PURE__ */ React.createElement("div", { onClick: () => setOpenPosition(p), className: "flex-1 cursor-pointer" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-slate-900" }, p.designation, " \xB7 ", p.department, " \u2014 ", p.state, p.city ? `, ${p.city}` : ""), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-400" }, "Owner ", nameOf(p.recruiterId), " \xB7 opened ", fmt(p.openDate), " \xB7 ", cs.length, " candidate(s)", p.founderRound ? " \xB7 founder round" : ""), term && cs.filter(candMatches).length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-0.5 text-xs font-medium text-indigo-600" }, "Match: ", cs.filter(candMatches).map((c) => c.name).join(", "))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, p.priority && /* @__PURE__ */ React.createElement(Badge, { tone: "amber" }, "Priority"), /* @__PURE__ */ React.createElement(Badge, { tone: open ? "indigo" : "emerald" }, filled, " of ", p.quantity, " filled"), late && /* @__PURE__ */ React.createElement(Badge, { tone: "red" }, "Day ", days), /* @__PURE__ */ React.createElement("button", { type: "button", title: "Edit position", onClick: (ev) => { ev.stopPropagation(); setEditing(p); }, className: "rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:border-indigo-300 hover:bg-indigo-50" }, "Edit"), /* @__PURE__ */ React.createElement("button", { type: "button", title: "Delete position", onClick: (ev) => { ev.stopPropagation(); setDeleting(p); }, className: "rounded-lg border border-slate-200 px-2 py-1 text-xs text-red-600 hover:border-red-300 hover:bg-red-50" }, "Delete")));
+    const st = hrtPosState(db, p);
+    return /* @__PURE__ */ React.createElement("div", { key: p.id, className: "flex w-full flex-col gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-indigo-300 sm:flex-row sm:items-center sm:justify-between", style: { background: st.bg, borderLeft: "6px solid " + st.bar, color: st.text } }, isAdmin && /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: ticked.has(p.id), onClick: (e) => e.stopPropagation(), onChange: (e) => { const nx = new Set(ticked); if (e.target.checked) nx.add(p.id); else nx.delete(p.id); setTicked(nx); }, className: "mt-1 h-4 w-4 shrink-0 accent-indigo-600" }), /* @__PURE__ */ React.createElement("div", { onClick: () => setOpenPosition(p), className: "flex-1 cursor-pointer" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold", style: { display: "flex", alignItems: "center", gap: "6px" } }, st.icon ? /* @__PURE__ */ React.createElement("span", { style: { width: "20px", height: "20px", borderRadius: "50%", background: st.bar, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "12px", flex: "0 0 auto" } }, st.icon) : null, /* @__PURE__ */ React.createElement("span", null, p.department, " \xB7 ", p.state, " \xB7 ", p.designation)), /* @__PURE__ */ React.createElement("div", { className: "mt-0.5 text-xs" }, "Owner ", nameOf(p.recruiterId), " \xB7 ", cs.length, " candidate(s)", p.founderRound ? " \xB7 founder round" : ""), /* @__PURE__ */ React.createElement("div", { className: "text-xs", style: { display: "flex", flexWrap: "wrap", gap: "4px 16px", marginTop: "8px" } }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", null, "Opened "), /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, fmt(p.openDate))), /* @__PURE__ */ React.createElement("span", null, "Deadline ", posDeadline(p)), /* @__PURE__ */ React.createElement("span", null, days, " day(s) passed"), !posClockStopped(p) && /* @__PURE__ */ React.createElement("span", null, (TD - days) >= 0 ? (TD - days) + " left" : (days - TD) + " overdue")), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-xs font-medium", style: { color: st.text, fontWeight: 700 } }, st.label), term && cs.filter(candMatches).length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-0.5 text-xs font-medium text-indigo-600" }, "Match: ", cs.filter(candMatches).map((c) => c.name).join(", "))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, p.priority && /* @__PURE__ */ React.createElement(Badge, { tone: "amber" }, "Priority"), /* @__PURE__ */ React.createElement(Badge, { tone: open ? "indigo" : "emerald" }, filled, " of ", p.quantity, " filled"), late && /* @__PURE__ */ React.createElement(Badge, { tone: "red" }, "Day ", days), /* @__PURE__ */ React.createElement("button", { type: "button", title: "Edit position", onClick: (ev) => { ev.stopPropagation(); setEditing(p); }, className: "rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:border-indigo-300 hover:bg-indigo-50" }, "Edit"), /* @__PURE__ */ React.createElement("button", { type: "button", title: "Delete position", onClick: (ev) => { ev.stopPropagation(); setDeleting(p); }, className: "rounded-lg border border-slate-200 px-2 py-1 text-xs text-red-600 hover:border-red-300 hover:bg-red-50" }, "Delete")));
   })), creating && /* @__PURE__ */ React.createElement(NewPositionModal, { db, commit, defaultRecruiter: isAdmin ? "" : currentUser.id, onClose: () => setCreating(false), onCreated: (p) => {
     setCreating(false);
     setOpenPosition(p);
@@ -1538,10 +1628,30 @@ function NewPositionModal({ db, commit, onClose, onCreated, defaultRecruiter }) 
   };
   return /* @__PURE__ */ React.createElement(Modal, { onClose }, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-semibold text-slate-900" }, "New position"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 text-sm text-slate-500" }, "Quantity is how many hires close this position. You add candidates after creating it."), /* @__PURE__ */ React.createElement("div", { className: "mt-5 grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement(Field, { label: "State" }, /* @__PURE__ */ React.createElement(Select, { value: p.state, onChange: (v) => setP({ ...p, state: v }), options: db.meta.states })), /* @__PURE__ */ React.createElement(Field, { label: "City (optional)" }, /* @__PURE__ */ React.createElement("input", { className: inputCls, value: p.city, onChange: (e) => setP({ ...p, city: e.target.value }) })), /* @__PURE__ */ React.createElement(Field, { label: "Department" }, /* @__PURE__ */ React.createElement(Select, { value: p.department, onChange: (v) => setP({ ...p, department: v }), options: db.meta.departments })), /* @__PURE__ */ React.createElement(Field, { label: "Designation" }, /* @__PURE__ */ React.createElement(Select, { value: p.designation, onChange: (v) => setP({ ...p, designation: v }), options: db.meta.designations })), /* @__PURE__ */ React.createElement(Field, { label: "Quantity (hires needed)" }, /* @__PURE__ */ React.createElement("input", { type: "number", min: "1", value: p.quantity, onChange: (e) => setP({ ...p, quantity: e.target.value }), className: inputCls })), /* @__PURE__ */ React.createElement(Field, { label: "Owning recruiter" }, /* @__PURE__ */ React.createElement("select", { value: p.recruiterId, onChange: (e) => setP({ ...p, recruiterId: e.target.value }), className: inputCls }, recruiters.map((r) => /* @__PURE__ */ React.createElement("option", { key: r.id, value: r.id }, r.name)))), /* @__PURE__ */ React.createElement(Field, { label: "Open date" }, /* @__PURE__ */ React.createElement("input", { type: "date", value: p.openDate, onChange: (e) => setP({ ...p, openDate: e.target.value }), className: inputCls }))), /* @__PURE__ */ React.createElement("label", { className: "mt-4 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: p.founderRound, onChange: (e) => setP({ ...p, founderRound: e.target.checked }), className: "h-4 w-4 rounded border-slate-300" }), "This position needs a ", /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "Founder interview"), " (added after Department interview)"), /* @__PURE__ */ React.createElement("label", { className: "mt-2 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-slate-700" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: p.priority, onChange: (e) => setP({ ...p, priority: e.target.checked }), className: "h-4 w-4 rounded border-slate-300" }), "Mark as ", /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "priority position")), /* @__PURE__ */ React.createElement("div", { className: "mt-6 flex justify-end gap-2" }, /* @__PURE__ */ React.createElement(Btn, { variant: "ghost", onClick: onClose }, "Cancel"), /* @__PURE__ */ React.createElement(Btn, { onClick: create }, "Create position")));
 }
+function hrtCandLastDate(c) {
+  var ds = [c.addedDate, c.shortlistedDate, c.offerDate, c.joinDate];
+  (c.log || []).forEach(function (l) { if (l && l.at) ds.push(l.at); });
+  var m = ""; ds.forEach(function (d) { if (d && d > m) m = d; }); return m;
+}
+function hrtShowResume(c) {
+  var r = c.resumeName || "";
+  if (/^https?:\/\//.test(r)) { window.open(r, "_blank"); }
+  else { alert("Resume: " + (r || "none on file") + "\n\nThe actual file opens once resumes are stored in cloud storage."); }
+}
+function hrtMoveCandidate(commit, c, newStage) {
+  if (newStage === c.stage) return;
+  commit(function (prev) { return Object.assign({}, prev, { candidates: prev.candidates.map(function (x) {
+    if (x.id !== c.id) return x;
+    var patch = { stage: newStage, log: [{ at: todayISO(), text: "Moved to " + newStage }].concat(x.log || []) };
+    if (newStage === "Shortlisted" && !x.shortlistedDate) patch.shortlistedDate = todayISO();
+    return Object.assign({}, x, patch);
+  }) }); });
+}
 function PositionDetail({ db, commit, position, onBack }) {
   const p = db.positions.find((x) => x.id === position.id) || position;
   const cs = candsOf(db, p.id).slice().sort((a, b) => a.addedDate < b.addedDate ? 1 : -1);
   const [openCand, setOpenCand] = useState(null);
+  const [selStage, setSelStage] = useState("");
   const [adding, setAdding] = useState(false);
   const [reassigning, setReassigning] = useState(false);
   const nameOf = (id) => (db.recruiters.find((r) => r.id === id) || {}).name || "\u2014";
@@ -1550,6 +1660,16 @@ function PositionDetail({ db, commit, position, onBack }) {
   const open = posOpen(db, p);
   const days = daysBetween(p.openDate, todayISO());
   const late = open && !posOfferOut(db, p) && days > OFFER_TARGET_DAYS;
+  const HB_BG = { green: "#86efac", yellow: "#fde047", orange: "#fb923c", red: "#f87171" };
+  const HB_BAR = { green: "#15803d", yellow: "#a16207", orange: "#c2410c", red: "#b91c1c" };
+  const hb = (p.closed || p.tempClosed || !open) ? null : (days <= 5 ? "green" : days <= 10 ? "yellow" : days <= OFFER_TARGET_DAYS ? "orange" : "red");
+  const deadline = fmt(hrtAddDays(p.openDate, hrtTotalDays(db)));
+  const dleft = hrtTotalDays(db) - days;
+  const statusTxt = (p.closed || p.tempClosed || !open) ? "Closed" : (days > OFFER_TARGET_DAYS ? "Delayed" : "In progress");
+  const st = hrtPosState(db, p);
+  const liveCands = cs.filter(function (c) { return ["rejected", "dropped", "offer_declined", "attrition"].indexOf(c.status) < 0; });
+  const stageLast = function (stg) { var m = ""; liveCands.forEach(function (c) { if (c.stage === stg) { var d = hrtCandLastDate(c); if (d > m) m = d; } }); return m; };
+  const shownCands = selStage ? liveCands.filter(function (c) { return hrtLevel(c.stage) === hrtLevel(selStage); }) : cs;
   const addCandidate = (cand) => {
     const dup = findDuplicateContact(db, cand.phone, cand.email, null);
     if (dup) return `Duplicate \u2014 ${dup.name} already exists with this ${dup.field}${dup.where ? ` (${dup.where})` : ""}.`;
@@ -1586,10 +1706,10 @@ function PositionDetail({ db, commit, position, onBack }) {
     }));
     setReassigning(false);
   };
-  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "mb-4 text-sm text-slate-500 hover:text-slate-900" }, "\u2190 All positions"), /* @__PURE__ */ React.createElement("div", { className: "rounded-2xl border border-slate-200 bg-white p-5" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-start justify-between gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-semibold text-slate-900" }, p.designation, " \xB7 ", p.department), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-slate-500" }, p.state, p.city ? `, ${p.city}` : "", " \xB7 owner ", nameOf(p.recruiterId), " \xB7 opened ", fmt(p.openDate), p.founderRound ? " \xB7 founder round on" : "", p.closed ? " \xB7 CLOSED" : "")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, p.priority && /* @__PURE__ */ React.createElement(Badge, { tone: "amber" }, "Priority"), /* @__PURE__ */ React.createElement(Badge, { tone: open ? "indigo" : "emerald" }, filled, " of ", p.quantity, " filled"), late && /* @__PURE__ */ React.createElement(Badge, { tone: "red" }, "Day ", days, " \xB7 delayed"))), /* @__PURE__ */ React.createElement("div", { className: "mt-3 border-t border-slate-100 pt-3" }, !reassigning ? /* @__PURE__ */ React.createElement("button", { onClick: () => setReassigning(true), className: "text-xs font-medium text-indigo-600 hover:text-indigo-500" }, "Reassign owner") : /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-end gap-2" }, /* @__PURE__ */ React.createElement(Field, { label: "Reassign this position (and its candidates) to" }, /* @__PURE__ */ React.createElement(LabeledSelect, { value: p.recruiterId, onChange: reassignPosition, options: recruiters.map((r) => ({ value: r.id, label: r.name })) })), /* @__PURE__ */ React.createElement(Btn, { size: "sm", variant: "ghost", onClick: () => setReassigning(false) }, "Cancel")))), /* @__PURE__ */ React.createElement("div", { className: "mb-3 mt-8 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-slate-700" }, "Candidates (", cs.length, ")"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Btn, { size: "sm", variant: position.closed ? "primary" : "ghost", onClick: () => commit((prev) => ({ ...prev, positions: prev.positions.map((x) => x.id === position.id ? { ...x, closed: true, tempClosed: false } : x) })) }, "Closed"), /* @__PURE__ */ React.createElement(Btn, { size: "sm", variant: (!position.closed && !position.tempClosed) ? "primary" : "ghost", onClick: () => commit((prev) => ({ ...prev, positions: prev.positions.map((x) => x.id === position.id ? { ...x, closed: false, tempClosed: false, openDate: todayISO() } : x) })) }, "Reopen"), /* @__PURE__ */ React.createElement(Btn, { size: "sm", variant: position.tempClosed ? "primary" : "ghost", onClick: () => commit((prev) => ({ ...prev, positions: prev.positions.map((x) => x.id === position.id ? { ...x, tempClosed: true, closed: false } : x) })) }, "Temporary closed"), /* @__PURE__ */ React.createElement(Btn, { size: "sm", onClick: () => setAdding(true) }, "Add candidate"))), cs.length === 0 ? /* @__PURE__ */ React.createElement(EmptyCard, null, "No candidates yet. Click \u201CAdd candidate\u201D \u2014 they start in Screening.") : /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, cs.map((c) => {
+  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "mb-4 text-sm text-slate-500 hover:text-slate-900" }, "\u2190 All positions"), /* @__PURE__ */ React.createElement("div", { className: "rounded-2xl border border-slate-200 p-5", style: { background: st.bg, borderLeft: "6px solid " + st.bar, color: st.text } }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-start justify-between gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-bold", style: { display: "flex", alignItems: "center", gap: "6px" } }, st.icon ? /* @__PURE__ */ React.createElement("span", { style: { width: "20px", height: "20px", borderRadius: "50%", background: st.bar, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "12px", flex: "0 0 auto" } }, st.icon) : null, /* @__PURE__ */ React.createElement("span", null, p.department, " \xB7 ", p.state, " \xB7 ", p.designation)), /* @__PURE__ */ React.createElement("div", { className: "text-sm", style: { marginTop: "4px" } }, "Owner ", nameOf(p.recruiterId), p.city ? " \xB7 " + p.city : "", p.founderRound ? " \xB7 founder round" : "", p.closed ? " \xB7 CLOSED" : ""), /* @__PURE__ */ React.createElement("div", { className: "mt-3 flex flex-wrap text-sm", style: { gap: "6px 20px" } }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", null, "Opened "), /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, fmt(p.openDate))), /* @__PURE__ */ React.createElement("span", null, "Deadline ", deadline), /* @__PURE__ */ React.createElement("span", null, days, " day(s) passed"), !(p.closed || p.tempClosed || !open) && /* @__PURE__ */ React.createElement("span", null, dleft >= 0 ? dleft + " left" : (-dleft) + " overdue")), /* @__PURE__ */ React.createElement("div", { className: "mt-2 text-sm", style: { color: st.text, fontWeight: 700 } }, st.label)), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, p.priority && /* @__PURE__ */ React.createElement(Badge, { tone: "amber" }, "Priority"), /* @__PURE__ */ React.createElement(Badge, { tone: open ? "indigo" : "emerald" }, filled, " of ", p.quantity, " filled"), late && /* @__PURE__ */ React.createElement(Badge, { tone: "red" }, "Day ", days, " \xB7 delayed"))), /* @__PURE__ */ React.createElement("div", { className: "mt-3 border-t border-slate-100 pt-3" }, !reassigning ? /* @__PURE__ */ React.createElement("button", { onClick: () => setReassigning(true), className: "text-xs font-medium text-indigo-600 hover:text-indigo-500" }, "Reassign owner") : /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-end gap-2" }, /* @__PURE__ */ React.createElement(Field, { label: "Reassign this position (and its candidates) to" }, /* @__PURE__ */ React.createElement(LabeledSelect, { value: p.recruiterId, onChange: reassignPosition, options: recruiters.map((r) => ({ value: r.id, label: r.name })) })), /* @__PURE__ */ React.createElement(Btn, { size: "sm", variant: "ghost", onClick: () => setReassigning(false) }, "Cancel")))), /* @__PURE__ */ React.createElement("div", { className: "mb-3 mt-8 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-slate-700" }, "Candidates (", cs.length, ")"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Btn, { size: "sm", variant: position.closed ? "primary" : "ghost", onClick: () => commit((prev) => ({ ...prev, positions: prev.positions.map((x) => x.id === position.id ? { ...x, closed: true, tempClosed: false } : x) })) }, "Closed"), /* @__PURE__ */ React.createElement(Btn, { size: "sm", variant: (!position.closed && !position.tempClosed) ? "primary" : "ghost", onClick: () => commit((prev) => ({ ...prev, positions: prev.positions.map((x) => x.id === position.id ? { ...x, closed: false, tempClosed: false, openDate: todayISO() } : x) })) }, "Reopen"), /* @__PURE__ */ React.createElement(Btn, { size: "sm", variant: position.tempClosed ? "primary" : "ghost", onClick: () => commit((prev) => ({ ...prev, positions: prev.positions.map((x) => x.id === position.id ? { ...x, tempClosed: true, closed: false } : x) })) }, "Temporary closed"), /* @__PURE__ */ React.createElement(Btn, { size: "sm", onClick: () => setAdding(true) }, "Add candidate"))), /* @__PURE__ */ React.createElement("div", { className: "mb-3", style: { overflowX: "auto", paddingBottom: "6px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px" } }, hrtPosSLA(db, p).stages.map(function (sx) { var lvl = hrtLevel(sx.stage); var cnt = liveCands.filter(function (c) { return hrtLevel(c.stage) === lvl; }).length; var sel = selStage === sx.stage; var tlrow = hrtTimeline(db).filter(function (r) { return r.stage === sx.stage; })[0]; var tgt = tlrow && Number(tlrow.count) > 0 ? Number(tlrow.count) : 0; var bg = sx.color === "green" ? "#16a34a" : sx.color === "yellow" ? "#eab308" : sx.color === "red" ? "#dc2626" : "#ffffff"; var fg = sx.color === "grey" ? "#64748b" : (sx.color === "yellow" ? "#1c1917" : "#ffffff"); return /* @__PURE__ */ React.createElement("div", { key: sx.stage, onClick: function () { setSelStage(sel ? "" : sx.stage); }, style: { minWidth: "116px", cursor: "pointer", background: bg, color: fg, border: sel ? "2px solid #312e81" : "0.5px solid #e2e8f0", borderRadius: "10px", padding: "10px 12px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", fontWeight: 600 } }, sx.stage), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "22px", fontWeight: 700, marginTop: "2px" } }, lvl === 0 ? "—" : cnt, tgt ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", opacity: 0.85 } }, "/" + tgt) : null), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "11px", marginTop: "3px" } }, "Target " + fmt(sx.target)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "11px", fontWeight: 600 } }, sx.reached ? ("Done " + (sx.lastDate ? fmt(sx.lastDate) : "✓")) : (sx.over > 0 ? "Not moved · +" + sx.over : "Upcoming"))); }))), selStage && /* @__PURE__ */ React.createElement("div", { className: "mb-2 text-sm font-semibold text-slate-700" }, selStage, " · ", shownCands.length, " candidate(s) — tap the stage again for all"), shownCands.length === 0 ? /* @__PURE__ */ React.createElement(EmptyCard, null, "No candidates yet. Click \u201CAdd candidate\u201D \u2014 they start in Screening.") : /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, shownCands.map((c) => {
     const sm = STATUS_META[c.status];
     const c1 = clock1(p, c);
-    return /* @__PURE__ */ React.createElement("button", { key: c.id, onClick: () => setOpenCand(c.id), className: "flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-indigo-300" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-slate-900" }, c.name), /* @__PURE__ */ React.createElement("div", { className: "truncate text-xs text-slate-400" }, c.stage, " \xB7 owner ", nameOf(c.recruiterId))), /* @__PURE__ */ React.createElement("div", { className: "flex shrink-0 items-center gap-2" }, /* @__PURE__ */ React.createElement(Badge, { tone: sm.tone }, sm.label), isActive(c) && !c.offerDate && /* @__PURE__ */ React.createElement(Badge, { tone: c1.tone }, c1.label)));
+    return /* @__PURE__ */ React.createElement("div", { key: c.id, className: "flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3" }, /* @__PURE__ */ React.createElement("div", { className: "min-w-0 flex-1", style: { cursor: "pointer" }, onClick: () => setOpenCand(c.id) }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-slate-900" }, c.name), /* @__PURE__ */ React.createElement("div", { className: "truncate text-xs text-slate-400" }, (c.phone || ""), " \xB7 ", c.stage)), /* @__PURE__ */ React.createElement("div", { className: "flex shrink-0 items-center gap-2" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => hrtShowResume(c), className: "rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:border-indigo-300 hover:bg-indigo-50" }, "Resume"), /* @__PURE__ */ React.createElement("select", { value: c.stage, onChange: (e) => hrtMoveCandidate(commit, c, e.target.value), className: inputCls, style: { width: "auto", height: "32px" } }, stagesFor(p).map((stg) => /* @__PURE__ */ React.createElement("option", { key: stg, value: stg }, stg)))));
   })), adding && /* @__PURE__ */ React.createElement(Modal, { onClose: () => setAdding(false) }, /* @__PURE__ */ React.createElement("div", { className: "text-lg font-semibold text-slate-900" }, "Add candidate"), /* @__PURE__ */ React.createElement("p", { className: "mt-1 text-sm text-slate-500" }, "They enter the pipeline at Screening."), /* @__PURE__ */ React.createElement(CandidateForm, { onSubmit: addCandidate, onCancel: () => setAdding(false) })), openCand && /* @__PURE__ */ React.createElement(CandidateDrawer, { db, commit, candidateId: openCand, position: p, onClose: () => setOpenCand(null) }));
 }
 function CandidateForm({ onSubmit, onCancel }) {
@@ -2212,9 +2332,391 @@ function Funnel({ db, commit, currentUser, isAdmin }) {
   const normCls = "rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40";
   return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Header, { title: "Recruitment funnel", subtitle: "Every candidate by stage, across all your openings" }), /* @__PURE__ */ React.createElement("input", { value: f.q, onChange: (e) => setF({ ...f, q: e.target.value }), placeholder: "Search a candidate by name, phone, or email\u2026", className: inputCls + " mt-4" }), /* @__PURE__ */ React.createElement("div", { className: "mt-3 flex flex-wrap gap-2" }, /* @__PURE__ */ React.createElement("select", { value: f.state, onChange: (e) => setF({ ...f, state: e.target.value }), className: inputCls + " w-auto" }, /* @__PURE__ */ React.createElement("option", { value: "" }, "All states"), stateOpts.map((s) => /* @__PURE__ */ React.createElement("option", { key: s, value: s }, s))), /* @__PURE__ */ React.createElement("select", { value: f.department, onChange: (e) => setF({ ...f, department: e.target.value }), className: inputCls + " w-auto" }, /* @__PURE__ */ React.createElement("option", { value: "" }, "All departments"), deptOpts.map((s) => /* @__PURE__ */ React.createElement("option", { key: s, value: s }, s))), /* @__PURE__ */ React.createElement("select", { value: f.positionId, onChange: (e) => setF({ ...f, positionId: e.target.value }), className: inputCls + " w-auto" }, /* @__PURE__ */ React.createElement("option", { value: "" }, "All positions"), posOpts.map((p) => /* @__PURE__ */ React.createElement("option", { key: p.id, value: p.id }, posLabel(p)))), isAdmin && /* @__PURE__ */ React.createElement("select", { value: f.recruiter, onChange: (e) => setF({ ...f, recruiter: e.target.value }), className: inputCls + " w-auto" }, /* @__PURE__ */ React.createElement("option", { value: "" }, "All recruiters"), db.recruiters.filter((r) => r.role === "recruiter" && recIds.includes(r.id)).map((r) => /* @__PURE__ */ React.createElement("option", { key: r.id, value: r.id }, r.name)))), /* @__PURE__ */ React.createElement("div", { className: "mt-4 text-xs text-slate-500" }, active.length, " active candidate(s)", exited.length > 0 ? ` \xB7 ${exited.length} rejected/dropped/left` : "", activeStage ? " \xB7 showing " + activeStage : " \xB7 tap a stage to see names"), /* @__PURE__ */ React.createElement("div", { className: "mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" }, shown.map((g) => /* @__PURE__ */ React.createElement("button", { key: g.stage, onClick: () => setActiveStage(activeStage === g.stage ? null : g.stage), className: activeStage === g.stage ? selCls : normCls }, /* @__PURE__ */ React.createElement("div", { className: "text-xs uppercase tracking-wide text-slate-400" }, g.stage), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-2xl font-semibold text-slate-900" }, g.rows.length), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-xs text-indigo-600" }, g.rows.length ? "View names \u2192" : "\u2014")))), selected && /* @__PURE__ */ React.createElement("div", { className: "mt-4 rounded-xl border border-slate-200 bg-white p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-slate-800" }, selected.stage, " \u2014 ", selected.rows.length, " candidate(s)"), /* @__PURE__ */ React.createElement("button", { onClick: () => setActiveStage(null), className: "text-xs text-slate-400 hover:text-slate-600" }, "Close")), selected.rows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "mt-3 text-xs text-slate-400" }, "No candidates at this stage.") : /* @__PURE__ */ React.createElement("div", { className: "mt-2 divide-y divide-slate-50" }, selected.rows.map((c) => /* @__PURE__ */ React.createElement("button", { key: c.id, onClick: () => setOpenCand(c.id), className: "flex w-full flex-col gap-0.5 py-2 text-left hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-slate-900" }, c.name), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-slate-500" }, posLabel(posOf(c)))), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-slate-400" }, nameOf(c.recruiterId)))))), openCand && openPos && /* @__PURE__ */ React.createElement(CandidateDrawer, { db, commit, candidateId: openCand, position: openPos, onClose: () => setOpenCand(null) }));
 }
+function StageTimelineSettings({ db, commit }) {
+  const DEF = [
+    { stage: "Job post", days: 2, count: 0 },
+    { stage: "Screening", days: 3, count: 15 },
+    { stage: "Shortlisting", days: 4, count: 0 },
+    { stage: "Interview 1", days: 2, count: 0 },
+    { stage: "Interview 2", days: 2, count: 0 },
+    { stage: "Salary discussion", days: 2, count: 0 },
+    { stage: "Offer sent", days: 2, count: 0 },
+    { stage: "Joining", days: 0, count: 0 }
+  ];
+  const init = (db.meta && db.meta.stageTimeline && db.meta.stageTimeline.length) ? db.meta.stageTimeline : DEF;
+  const [tl, setTl] = React.useState(init);
+  const [newName, setNewName] = React.useState("");
+  const [saved, setSaved] = React.useState(false);
+  const dirty = () => setSaved(false);
+  const move = (i, d) => { const j = i + d; if (j < 0 || j >= tl.length) return; const n = tl.slice(); const t = n[i]; n[i] = n[j]; n[j] = t; setTl(n); dirty(); };
+  const setField = (i, k, v) => { setTl(tl.map((r, idx) => idx === i ? Object.assign({}, r, { [k]: v }) : r)); dirty(); };
+  const remove = (i) => { setTl(tl.filter((_, idx) => idx !== i)); dirty(); };
+  const add = () => { const nm = newName.trim(); if (!nm || tl.some((r) => r.stage === nm)) return; setTl(tl.concat([{ stage: nm, days: 0, count: 0 }])); setNewName(""); dirty(); };
+  const save = () => { commit((prev) => Object.assign({}, prev, { meta: Object.assign({}, prev.meta, { stageTimeline: tl.map((r) => ({ stage: r.stage, days: Number(r.days) || 0, count: Number(r.count) || 0 })) }) })); setSaved(true); };
+  let cum = 0;
+  const COL = "auto 1.5fr 0.6fr 0.6fr 0.5fr auto";
+  return React.createElement("div", { className: "mb-4 rounded-xl border border-slate-200 bg-white p-4" },
+    React.createElement("div", { className: "mb-1 text-sm font-medium text-slate-700" }, "Stage timeline"),
+    React.createElement("div", { className: "mb-3 text-xs text-slate-400" }, "Days = time allowed per stage. Count = minimum candidates (0 = none). Reorder, rename, add or remove stages — applies to every position."),
+    React.createElement("div", { className: "overflow-hidden rounded-lg border border-slate-200" },
+      React.createElement("div", { className: "grid items-center gap-2 bg-slate-50 px-3 py-2 text-xs text-slate-400", style: { gridTemplateColumns: COL } }, React.createElement("span", null, "Move"), React.createElement("span", null, "Stage"), React.createElement("span", null, "Days"), React.createElement("span", null, "Count"), React.createElement("span", null, "Due"), React.createElement("span", null, "")),
+      tl.map((r, i) => { cum += Number(r.days) || 0; const due = cum; return React.createElement("div", { key: i, className: "grid items-center gap-2 border-t border-slate-100 px-3 py-2 text-sm", style: { gridTemplateColumns: COL } },
+        React.createElement("span", { className: "flex gap-1" }, React.createElement("button", { type: "button", onClick: () => move(i, -1), className: "text-slate-400 hover:text-indigo-600" }, "▲"), React.createElement("button", { type: "button", onClick: () => move(i, 1), className: "text-slate-400 hover:text-indigo-600" }, "▼")),
+        React.createElement("input", { value: r.stage, onChange: (e) => setField(i, "stage", e.target.value), className: inputCls, style: { height: "30px" } }),
+        React.createElement("input", { type: "number", min: "0", value: r.days, onChange: (e) => setField(i, "days", e.target.value), className: inputCls, style: { width: "50px", height: "30px" } }),
+        React.createElement("input", { type: "number", min: "0", value: r.count || "", placeholder: "0", onChange: (e) => setField(i, "count", e.target.value), className: inputCls, style: { width: "50px", height: "30px" } }),
+        React.createElement("span", { className: "text-slate-500" }, "D" + due),
+        React.createElement("button", { type: "button", onClick: () => remove(i), className: "text-slate-300 hover:text-red-600" }, "✕")); })),
+    React.createElement("div", { className: "mt-3 flex items-center gap-2" },
+      React.createElement("input", { value: newName, onChange: (e) => setNewName(e.target.value), placeholder: "New stage name", className: inputCls, style: { maxWidth: "220px", height: "32px" } }),
+      React.createElement(Btn, { size: "sm", variant: "ghost", onClick: add, disabled: !newName.trim() }, "Add stage")),
+    React.createElement("div", { className: "mt-3 flex items-center gap-3" }, React.createElement(Btn, { size: "sm", onClick: save }, "Save timeline"), saved && React.createElement("span", { className: "text-xs text-emerald-600" }, "Saved")));
+}
+
+/* ===================== Target vs Achievement ===================== */
+function hrtT_weekStart(iso) { var d = new Date(iso); var dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); return d.toISOString().slice(0, 10); }
+function hrtT_range(period, anchor) {
+  var t = todayISO(); var a = (anchor && anchor.length === 10) ? anchor : t; var d = new Date(a);
+  var cap = function (x) { return x > t ? t : x; };
+  var mk = function (y, m, dd) { return new Date(Date.UTC(y, m, dd)).toISOString().slice(0, 10); };
+  var Y = d.getUTCFullYear(), M = d.getUTCMonth();
+  var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  if (period === "today") return { from: t, to: t, label: "Today \u00B7 " + fmt(t) };
+  if (period === "day") return { from: a, to: a, label: fmt(a) };
+  if (period === "week") { var ws = hrtT_weekStart(a); var we = new Date(ws); we.setUTCDate(we.getUTCDate() + 6); var wes = we.toISOString().slice(0, 10); return { from: ws, to: cap(wes), label: "Week " + fmt(ws) + " \u2013 " + fmt(wes) }; }
+  if (period === "month") return { from: mk(Y, M, 1), to: cap(mk(Y, M + 1, 0)), label: MON[M] + " " + Y };
+  if (period === "quarter") { var q = Math.floor(M / 3); return { from: mk(Y, q * 3, 1), to: cap(mk(Y, q * 3 + 3, 0)), label: "Q" + (q + 1) + " " + Y }; }
+  if (period === "year") return { from: mk(Y, 0, 1), to: cap(mk(Y, 11, 31)), label: String(Y) };
+  return { from: "0000-01-01", to: t, label: "All time" };
+}
+function hrtT_shift(period, anchor, dir) {
+  var t = todayISO(); var a = (anchor && anchor.length === 10) ? anchor : t; var d = new Date(a);
+  var Y = d.getUTCFullYear(), M = d.getUTCMonth(), D = d.getUTCDate();
+  var mk = function (y, m, dd) { return new Date(Date.UTC(y, m, dd)).toISOString().slice(0, 10); };
+  var out;
+  if (period === "day") out = mk(Y, M, D + dir);
+  else if (period === "week") out = mk(Y, M, D + 7 * dir);
+  else if (period === "month") out = mk(Y, M + dir, 1);
+  else if (period === "quarter") out = mk(Y, M + 3 * dir, 1);
+  else if (period === "year") out = mk(Y + dir, 0, 1);
+  else out = a;
+  return out > t ? t : out;
+}
+function hrtT_live(c) { return ["rejected", "dropped", "offer_declined", "attrition"].indexOf(c.status) < 0; }
+function hrtT_stages(db) {
+  var tl = hrtTimeline(db); var seen = {}; var out = [];
+  tl.forEach(function (r) { var l = hrtLevel(r.stage); if (l >= 1 && l <= 6 && !seen[l]) { seen[l] = 1; out.push({ level: l, name: r.stage, count: Number(r.count) || 0 }); } });
+  out.sort(function (a, b) { return a.level - b.level; });
+  if (!out.length) out = [{ level: 1, name: "Screening", count: 15 }, { level: 2, name: "Shortlisting", count: 0 }, { level: 3, name: "Interview 1", count: 0 }, { level: 4, name: "Interview 2", count: 0 }, { level: 5, name: "Salary discussion", count: 0 }, { level: 6, name: "Offer sent", count: 0 }];
+  return out;
+}
+function hrtT_minScreen(db) { var st = hrtT_stages(db).filter(function (x) { return x.level === 1; })[0]; return (st && st.count > 0) ? st.count : 15; }
+function hrtT_doneOn(db, rid, level, dateISO) { var n = 0; db.candidates.forEach(function (c) { if (c.recruiterId !== rid) return; (c.log || []).forEach(function (l) { if (l && l.at === dateISO && hrtLevel(l.text || "") === level) n++; }); }); return n; }
+function hrtT_doneRange(db, rid, level, r) { var n = 0; db.candidates.forEach(function (c) { if (c.recruiterId !== rid) return; (c.log || []).forEach(function (l) { if (l && l.at && l.at >= r.from && l.at <= r.to && hrtLevel(l.text || "") === level) n++; }); }); return n; }
+function hrtT_offersRange(db, rid, r) { return db.candidates.filter(function (c) { return c.recruiterId === rid && c.offerDate && c.offerDate >= r.from && c.offerDate <= r.to; }).length; }
+function hrtT_plans(db) { return (db.meta && db.meta.dailyPlans) || {}; }
+function hrtT_plan(db, rid, dateISO) { var p = hrtT_plans(db); return (p[rid] && p[rid][dateISO]) || null; }
+function hrtT_planned(plan, level) { if (!plan || !plan.plan || !plan.plan[level]) return 0; var st = plan.plan[level]; var sum = (st.items || []).reduce(function (a, i) { return a + (Number(i.count) || 0); }, 0); return Math.max(Number(st.target) || 0, sum); }
+function hrtT_posLabel(db, pid) { var p = db.positions.filter(function (x) { return x.id === pid; })[0]; if (!p) return "(position)"; return [p.department, p.state, p.designation, (p.city || "").trim()].filter(Boolean).join(" \u00B7 "); }
+function hrtT_recommend(db, rid, level) {
+  var myPos = db.positions.filter(function (p) { return p.recruiterId === rid && !p.closed && !p.tempClosed && posOpen(db, p); });
+  var items = [];
+  if (level === 1) {
+    var minS = hrtT_minScreen(db);
+    myPos.forEach(function (p) { var have = candsOf(db, p.id).filter(hrtT_live).length; var need = Math.max(0, minS - have); if (need > 0) items.push({ positionId: p.id, count: need, note: need + " more to reach " + minS }); });
+    items.sort(function (a, b) { return b.count - a.count; });
+    var rem = minS; var out = [];
+    items.forEach(function (it) { if (rem <= 0) return; var c = Math.min(it.count, rem); out.push({ positionId: it.positionId, count: c, note: it.note }); rem -= c; });
+    if (rem > 0 && myPos.length) { var f = myPos[0]; var ex = out.filter(function (o) { return o.positionId === f.id; })[0]; if (ex) ex.count += rem; else out.push({ positionId: f.id, count: rem, note: "to reach " + minS }); }
+    return out;
+  }
+  myPos.forEach(function (p) { var ready = candsOf(db, p.id).filter(hrtT_live).filter(function (c) { return hrtLevel(c.stage) === level - 1; }).length; if (ready > 0) items.push({ positionId: p.id, count: ready, note: ready + " ready" }); });
+  items.sort(function (a, b) { return b.count - a.count; });
+  return items;
+}
+function hrtT_score(db, rid, r) {
+  var offers = hrtT_offersRange(db, rid, r);
+  var plans = hrtT_plans(db)[rid] || {}; var pl = 0, dn = 0; var stages = hrtT_stages(db);
+  Object.keys(plans).forEach(function (dt) { if (dt < r.from || dt > r.to) return; stages.forEach(function (st) { var p = hrtT_planned(plans[dt], st.level); if (p > 0) { pl += p; dn += Math.min(p, hrtT_doneOn(db, rid, st.level, dt)); } }); });
+  var pct = pl > 0 ? dn / pl : 0;
+  var screened = hrtT_doneRange(db, rid, 1, r);
+  var onTime = 0, stuck = 0;
+  db.positions.forEach(function (p) { if (p.recruiterId !== rid || p.closed || p.tempClosed || !posOpen(db, p)) return; var c = hrtPosSLA(db, p).color; if (c === "green" || c === "done") onTime++; else if (c === "red") stuck++; });
+  var score = offers * 10 + Math.round(pct * 30) + onTime * 2 - stuck * 2 + Math.min(20, screened * 0.5);
+  return { score: Math.round(score), offers: offers, pct: Math.round(pct * 100), screened: screened, onTime: onTime, stuck: stuck };
+}
+function hrtT_activeWeeks(db, rid, r) { var w = {}; db.candidates.forEach(function (c) { if (c.recruiterId !== rid) return; (c.log || []).forEach(function (l) { if (l && l.at && l.at >= r.from && l.at <= r.to) w[hrtT_weekStart(l.at)] = 1; }); }); var plans = hrtT_plans(db)[rid] || {}; Object.keys(plans).forEach(function (dt) { if (dt >= r.from && dt <= r.to) w[hrtT_weekStart(dt)] = 1; }); return Math.max(1, Object.keys(w).length); }
+
+function TargetVsAchievement({ db, commit, currentUser, isAdmin }) {
+  var h = React.createElement;
+  var today = todayISO();
+  var recruiters = db.recruiters.filter(function (r) { return r.role === "recruiter"; });
+  var isRec = currentUser.role === "recruiter";
+  var me = currentUser;
+  var stages = hrtT_stages(db);
+  var minS = hrtT_minScreen(db);
+  var nameOf = function (id) { var r = db.recruiters.filter(function (x) { return x.id === id; })[0]; return r ? r.name : id; };
+
+  var tabs = (isRec ? [["day", "My day"]] : []).concat([["eod", "End-of-day report"], ["reports", "Reports"], ["rank", "Ranking"]]);
+  var st1 = React.useState(isRec ? "day" : "eod"); var tab = st1[0], setTab = st1[1];
+  var st2 = React.useState("week"); var period = st2[0], setPeriod = st2[1];
+  var st7 = React.useState(today); var anchor = st7[0], setAnchor = st7[1];
+  var st3 = React.useState(today); var eodDate = st3[0], setEodDate = st3[1];
+  var st4 = React.useState(null); var picker = st4[0], setPicker = st4[1];
+  var st5 = React.useState({}); var pickVals = st5[0], setPickVals = st5[1];
+
+  var myPlan = isRec ? hrtT_plan(db, me.id, today) : null;
+  var nowH = new Date().getHours();
+  var dayClosed = !!(myPlan && (myPlan.ended || (myPlan.started && nowH >= 20)));
+
+  var initDraft = function () {
+    var d = {};
+    stages.forEach(function (st) {
+      var saved = myPlan && myPlan.plan && myPlan.plan[st.level];
+      if (saved) { d[st.level] = { target: Number(saved.target) || 0, items: (saved.items || []).map(function (i) { return { positionId: i.positionId, count: Number(i.count) || 0 }; }) }; }
+      else { var rec = isRec ? hrtT_recommend(db, me.id, st.level) : []; var sum = rec.reduce(function (a, i) { return a + i.count; }, 0); d[st.level] = { target: st.level === 1 ? Math.max(minS, sum) : sum, items: [] }; }
+    });
+    return d;
+  };
+  var st6 = React.useState(initDraft); var draft = st6[0], setDraft = st6[1];
+
+  var savePlanPart = function (patch) {
+    commit(function (prev) {
+      var plans = Object.assign({}, (prev.meta && prev.meta.dailyPlans) || {});
+      var mine = Object.assign({}, plans[me.id] || {});
+      var cur = Object.assign({}, mine[today] || {});
+      Object.assign(cur, patch);
+      mine[today] = cur; plans[me.id] = mine;
+      return Object.assign({}, prev, { meta: Object.assign({}, prev.meta, { dailyPlans: plans }) });
+    });
+  };
+  var startDay = function () { savePlanPart({ started: new Date().toISOString() }); };
+  var endDay = function () { savePlanPart({ ended: new Date().toISOString() }); };
+  var sumItems = function (lv) { return (draft[lv] && draft[lv].items || []).reduce(function (a, i) { return a + (Number(i.count) || 0); }, 0); };
+  var problems = stages.map(function (st) {
+    var tgt = Number(draft[st.level] && draft[st.level].target) || 0; var sum = sumItems(st.level);
+    if (st.level === 1 && tgt < minS) return st.name + " target must be at least " + minS;
+    if (tgt > 0 && sum < tgt) return st.name + " needs " + tgt + " \u2014 you've planned " + sum + ". Add " + (tgt - sum) + " more or use the recommendation.";
+    return null;
+  }).filter(Boolean);
+  var savePlan = function () { if (problems.length) return; var out = {}; stages.forEach(function (st) { out[st.level] = { target: Number(draft[st.level].target) || 0, items: draft[st.level].items }; }); savePlanPart({ plan: out }); };
+  var useRec = function (lv) { var rec = hrtT_recommend(db, me.id, lv); var sum = rec.reduce(function (a, i) { return a + i.count; }, 0); setDraft(function (prev) { var nd = Object.assign({}, prev); nd[lv] = { target: Math.max(Number(prev[lv] && prev[lv].target) || 0, lv === 1 ? Math.max(minS, sum) : sum), items: rec.map(function (i) { return { positionId: i.positionId, count: i.count }; }) }; return nd; }); };
+  var setTarget = function (lv, v) { setDraft(function (prev) { var nd = Object.assign({}, prev); nd[lv] = Object.assign({}, prev[lv], { target: v }); return nd; }); };
+  var openPicker = function (lv) { var v = {}; (draft[lv].items || []).forEach(function (i) { v[i.positionId] = i.count; }); setPickVals(v); setPicker(lv); };
+  var addFromPicker = function () { var lv = picker; var items = []; Object.keys(pickVals).forEach(function (pid) { var c = Number(pickVals[pid]) || 0; if (c > 0) items.push({ positionId: pid, count: c }); }); setDraft(function (prev) { var nd = Object.assign({}, prev); nd[lv] = Object.assign({}, prev[lv], { items: items }); return nd; }); setPicker(null); };
+
+  var sel = function (val, onC, opts) { return h("select", { value: val, onChange: function (e) { onC(e.target.value); }, className: inputCls, style: { width: "auto", height: "32px" } }, opts.map(function (o) { return h("option", { key: o[0], value: o[0] }, o[1]); })); };
+  var PER = [["today", "Today"], ["day", "Day"], ["week", "Week"], ["month", "Month"], ["quarter", "Quarter"], ["year", "Year"]];
+  var periodBar = function () {
+    var rr = hrtT_range(period, anchor);
+    return h("div", { className: "flex flex-wrap items-center gap-2" },
+      sel(period, function (v) { setPeriod(v); setAnchor(today); }, PER),
+      period !== "today" ? h("span", { className: "flex items-center gap-1" },
+        h("button", { onClick: function () { setAnchor(hrtT_shift(period, anchor, -1)); }, className: "rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm" }, "\u25C0"),
+        h("span", { className: "min-w-0 px-1 text-sm font-medium text-slate-700" }, rr.label),
+        h("button", { onClick: function () { setAnchor(hrtT_shift(period, anchor, 1)); }, disabled: rr.to >= today, className: "rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm disabled:opacity-40" }, "\u25B6"),
+        h("input", { type: "date", value: anchor, max: today, onChange: function (e) { if (e.target.value) setAnchor(e.target.value); }, className: inputCls, style: { width: "auto", height: "30px" } })) : h("span", { className: "text-sm font-medium text-slate-700" }, rr.label));
+  };
+  var card = function (children, extra) { return h("div", Object.assign({ className: "rounded-xl border border-slate-200 bg-white p-4" }, extra || {}), children); };
+
+  /* ---------- MY DAY ---------- */
+  var renderDay = function () {
+    var wk = hrtT_range("week", today); var offersWk = hrtT_offersRange(db, me.id, wk);
+    var started = myPlan && myPlan.started;
+    var head = h("div", { className: "mb-4 rounded-xl border border-slate-200 bg-white p-4" },
+      h("div", { className: "text-lg font-semibold text-slate-900" }, "Good day, " + (me.name || "").split(" ")[0]),
+      h("div", { className: "mt-1 text-sm text-slate-500" }, fmt(today) + " \u00B7 This week: ", h("b", null, offersWk + " / 5"), " offers" + (started ? (dayClosed ? " \u00B7 day closed" : " \u00B7 day started " + String(myPlan.started).slice(11, 16)) : "")),
+      !started && h("button", { onClick: startDay, className: "mt-3 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white" }, "Start day"));
+    if (!started) return h("div", null, head, h("div", { className: "text-sm text-slate-400" }, "Start your day to see recommendations and set today's plan."));
+
+    var cards = stages.map(function (st) {
+      var rec = hrtT_recommend(db, me.id, st.level); var recSum = rec.reduce(function (a, i) { return a + i.count; }, 0);
+      var d = draft[st.level]; var sum = sumItems(st.level); var tgt = Number(d.target) || 0;
+      var done = hrtT_doneOn(db, me.id, st.level, today);
+      var short = tgt > 0 && sum < tgt;
+      return h("div", { key: st.level, className: "rounded-xl border border-slate-200 bg-white p-4" },
+        h("div", { className: "flex items-center justify-between" },
+          h("span", { className: "text-base font-semibold text-slate-900" }, st.name, st.level === 1 ? h("span", { className: "ml-2 text-xs font-bold text-red-600" }, "MIN " + minS) : null),
+          h("span", { className: "flex items-center gap-2 text-xs text-slate-500" }, "Target ", h("input", { type: "number", min: st.level === 1 ? minS : 0, value: d.target, onChange: function (e) { setTarget(st.level, e.target.value); }, className: inputCls, style: { width: "64px", height: "32px", textAlign: "center", border: st.level === 1 ? "1.5px solid #dc2626" : undefined } }))),
+        h("div", { className: "mt-3 text-xs font-bold tracking-wide text-slate-400" }, "RECOMMENDED \u00B7 " + recSum + (st.level === 6 ? " \u00B7 closest to your 5/week" : "")),
+        rec.length ? h("div", { className: "mt-1 space-y-1" }, rec.map(function (i) { return h("div", { key: i.positionId, className: "flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm" }, h("span", null, hrtT_posLabel(db, i.positionId), h("span", { className: "ml-1 text-slate-400" }, "\u2014 " + i.note)), h("b", null, i.count)); })) : h("div", { className: "mt-1 text-xs text-slate-400" }, "Nothing ready for this stage right now."),
+        d.items.length ? h("div", null, h("div", { className: "mt-3 text-xs font-bold tracking-wide text-slate-400" }, "YOUR PLAN \u00B7 " + sum), h("div", { className: "mt-1 space-y-1" }, d.items.map(function (i) { return h("div", { key: i.positionId, className: "flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm" }, h("span", null, hrtT_posLabel(db, i.positionId)), h("b", null, i.count)); }))) : null,
+        short ? h("div", { className: "mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700" }, h("b", null, "Can't save yet. "), st.name + " needs " + tgt + " \u2014 you've planned " + sum + ". Add " + (tgt - sum) + " more or use the recommendation.") : null,
+        !dayClosed && h("div", { className: "mt-3 flex gap-2" },
+          h("button", { onClick: function () { useRec(st.level); }, disabled: !rec.length, className: "flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" }, "\u2713 Use recommendation"),
+          h("button", { onClick: function () { openPicker(st.level); }, className: "rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700" }, "+ Add from positions")),
+        myPlan && myPlan.plan ? h("div", { className: "mt-3" }, h("div", { className: "flex justify-between text-xs text-slate-500" }, h("span", null, "Today"), h("b", null, done + " / " + hrtT_planned(myPlan, st.level))), h("div", { style: { height: "8px", borderRadius: "4px", background: "#e2e8f0", overflow: "hidden", marginTop: "4px" } }, h("div", { style: { width: Math.min(100, hrtT_planned(myPlan, st.level) ? done / hrtT_planned(myPlan, st.level) * 100 : 0) + "%", height: "100%", background: "#16a34a" } }))) : null);
+    });
+
+    var eodRows = myPlan && myPlan.plan ? stages.map(function (st) { var p = hrtT_planned(myPlan, st.level); var dn = hrtT_doneOn(db, me.id, st.level, today); var ok = p > 0 ? dn >= p : null; return h("div", { key: st.level, className: "grid items-center border-t border-slate-100 px-3 py-2 text-sm", style: { gridTemplateColumns: "1.5fr 0.7fr 0.7fr 1.1fr" } }, h("span", null, st.name), h("span", null, p), h("b", null, dn), ok === null ? h("span", { className: "text-slate-400" }, "\u2014") : ok ? h("span", { className: "font-semibold text-emerald-700" }, "Achieved" + (dn > p ? " +" + (dn - p) : "")) : h("span", { className: "font-semibold text-red-600" }, "Not achieved \u2212" + (p - dn))); }) : null;
+
+    return h("div", null, head,
+      h("div", { className: "mb-2 text-sm font-semibold text-slate-700" }, "Today's plan \u2014 every stage"),
+      h("div", { className: "space-y-3" }, cards),
+      !dayClosed && h("div", { className: "mt-3 flex items-center justify-end gap-3" }, problems.length ? h("span", { className: "text-xs text-red-600" }, problems.length + " stage" + (problems.length > 1 ? "s" : "") + " below target") : (myPlan && myPlan.plan ? h("span", { className: "text-xs text-emerald-700" }, "Plan saved") : null), h("button", { onClick: savePlan, disabled: !!problems.length, className: "rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40" }, "Save plan")),
+      myPlan && myPlan.plan ? h("div", { className: "mt-6" },
+        h("div", { className: "mb-2 text-sm font-semibold text-slate-700" }, "End of day \u2014 achieved vs not"),
+        h("div", { className: "overflow-hidden rounded-xl border border-slate-200 bg-white" }, h("div", { className: "grid bg-slate-50 px-3 py-2 text-xs text-slate-400", style: { gridTemplateColumns: "1.5fr 0.7fr 0.7fr 1.1fr" } }, h("span", null, "Stage"), h("span", null, "Planned"), h("span", null, "Done"), h("span", null, "Result")), eodRows),
+        h("div", { className: "mt-2 flex items-center justify-between" }, h("span", { className: "text-xs text-slate-500" }, dayClosed ? "Day closed" : "Shortfalls roll to tomorrow \u00B7 auto-closes 8:00 PM"), !dayClosed && h("button", { onClick: endDay, className: "rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white" }, "End day"))) : null,
+      picker !== null && h("div", { className: "fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4" }, h("div", { className: "my-8 w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl" },
+        h("div", { className: "text-base font-semibold text-slate-900" }, "Add from positions \u00B7 " + (stages.filter(function (x) { return x.level === picker; })[0] || {}).name),
+        h("div", { className: "mb-3 text-xs text-slate-400" }, picker === 1 ? "Your open positions. Enter how many to screen for each." : "Your positions with candidates ready. Enter how many."),
+        h("div", { className: "space-y-1" }, db.positions.filter(function (p) { return p.recruiterId === me.id && !p.closed && !p.tempClosed && posOpen(db, p); }).map(function (p) { var ready = picker === 1 ? candsOf(db, p.id).filter(hrtT_live).length : candsOf(db, p.id).filter(hrtT_live).filter(function (c) { return hrtLevel(c.stage) === picker - 1; }).length; return h("div", { key: p.id, className: "flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm" }, h("span", null, hrtT_posLabel(db, p.id), h("span", { className: "ml-1 text-slate-400" }, picker === 1 ? "\u2014 " + ready + " screened" : "\u2014 " + ready + " ready")), h("input", { type: "number", min: "0", value: pickVals[p.id] || "", placeholder: "0", onChange: function (e) { var val = e.target.value; setPickVals(function (prev) { var v = Object.assign({}, prev); v[p.id] = val; return v; }); }, className: inputCls, style: { width: "60px", height: "30px", textAlign: "center" } })); })),
+        h("div", { className: "mt-4 flex justify-end gap-2" }, h("button", { onClick: function () { setPicker(null); }, className: "rounded-lg border border-slate-300 px-3 py-2 text-sm" }, "Cancel"), h("button", { onClick: addFromPicker, className: "rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white" }, "Add to plan")))));
+  };
+
+  /* ---------- EOD GRID ---------- */
+  var renderEod = function () {
+    var cols = "1.3fr " + recruiters.map(function () { return "1fr"; }).join(" ");
+    var cell = function (p, d) { if (!p) return h("span", { className: "text-slate-400" }, d ? "0 \u2192 " + d : "\u2014"); var ok = d >= p; return h("span", { className: "font-semibold " + (ok ? "text-emerald-700" : "text-red-600") }, p + " \u2192 " + d + (ok ? " \u2713" : " \u2717")); };
+    var achieved = {}; recruiters.forEach(function (r) { achieved[r.id] = [0, 0]; });
+    var rows = stages.map(function (st) { return h("div", { key: st.level, className: "grid items-center border-t border-slate-100 px-3 py-2 text-center text-sm", style: { gridTemplateColumns: cols } }, h("span", { className: "text-left font-semibold" }, st.name), recruiters.map(function (r) { var plan = hrtT_plan(db, r.id, eodDate); var p = hrtT_planned(plan, st.level); var d = hrtT_doneOn(db, r.id, st.level, eodDate); if (p > 0) { achieved[r.id][1]++; if (d >= p) achieved[r.id][0]++; } return h("span", { key: r.id }, cell(p, d)); })); });
+    return h("div", null,
+      h("div", { className: "mb-3 flex flex-wrap items-center justify-between gap-2" }, h("div", { className: "text-sm font-semibold text-slate-700" }, "End-of-day report \u2014 every stage \u00D7 every recruiter (plan \u2192 achieved)"), h("input", { type: "date", value: eodDate, onChange: function (e) { setEodDate(e.target.value); }, className: inputCls, style: { width: "auto", height: "32px" } })),
+      h("div", { className: "overflow-x-auto" }, h("div", { className: "overflow-hidden rounded-xl border border-slate-200 bg-white", style: { minWidth: "520px" } },
+        h("div", { className: "grid bg-slate-50 px-3 py-2 text-center text-xs text-slate-400", style: { gridTemplateColumns: cols } }, h("span", { className: "text-left" }, "Stage"), recruiters.map(function (r) { return h("span", { key: r.id }, r.name); })),
+        rows,
+        h("div", { className: "grid border-t border-slate-200 bg-slate-50 px-3 py-2 text-center text-sm font-bold", style: { gridTemplateColumns: cols } }, h("span", { className: "text-left" }, "Achieved"), recruiters.map(function (r) { var a = achieved[r.id]; var tone = a[1] === 0 ? "text-slate-400" : a[0] === a[1] ? "text-emerald-700" : "text-red-600"; return h("span", { key: r.id, className: tone }, a[1] ? a[0] + " / " + a[1] : "no plan"); })))),
+      h("div", { className: "mt-2 text-xs text-slate-500" }, "Each cell: planned \u2192 achieved. Green = met, red = short. Auto-closes 8:00 PM."));
+  };
+
+  /* ---------- REPORTS ---------- */
+  var renderReports = function () {
+    var r = hrtT_range(period, anchor); var cols = "1.2fr 0.9fr 0.9fr 0.9fr";
+    return h("div", null,
+      h("div", { className: "mb-3 flex items-center justify-between" }, h("div", { className: "text-sm font-semibold text-slate-700" }, "Reports"), periodBar()),
+      h("div", { className: "overflow-hidden rounded-xl border border-slate-200 bg-white" },
+        h("div", { className: "grid bg-slate-50 px-3 py-2 text-xs text-slate-400", style: { gridTemplateColumns: cols } }, h("span", null, "Recruiter"), h("span", null, "Plan achieved"), h("span", null, "Screened"), h("span", null, "Offers")),
+        recruiters.map(function (rc) { var sc = hrtT_score(db, rc.id, r); return h("div", { key: rc.id, className: "grid border-t border-slate-100 px-3 py-2 text-sm", style: { gridTemplateColumns: cols } }, h("span", null, rc.name), h("span", null, sc.pct + "%"), h("span", null, sc.screened), h("b", null, sc.offers + (period === "week" ? " / 5" : ""))); })));
+  };
+
+  /* ---------- RANKING ---------- */
+  var renderRank = function () {
+    var r = hrtT_range(period, anchor); var avg = (period === "quarter" || period === "year");
+    var rows = recruiters.map(function (rc) { var sc = hrtT_score(db, rc.id, r); var w = avg ? hrtT_activeWeeks(db, rc.id, r) : 1; return Object.assign({ rec: rc, shown: Math.round(sc.score / w), w: w }, sc); });
+    rows.sort(function (a, b) { return b.shown - a.shown || b.offers - a.offers; });
+    var best = function (key) { var m = -1, id = null; rows.forEach(function (x) { if (x[key] > m) { m = x[key]; id = x.rec.id; } }); return m > 0 ? id : null; };
+    var bC = best("offers"), bS = best("screened"), bP = best("pct");
+    var bT = null, bTv = -1; rows.forEach(function (x) { var tot = x.onTime + x.stuck; var v = tot ? x.onTime / tot : 0; if (x.onTime > 0 && v > bTv) { bTv = v; bT = x.rec.id; } });
+    var badges = function (id) { var b = []; if (id === bC) b.push("\uD83C\uDFC6 Closer"); if (id === bS) b.push("\uD83D\uDD0D Screening Master"); if (id === bT) b.push("\u23F1 On-Time Champion"); if (id === bP) b.push("\u2705 Planner"); return b.join(" \u00B7 "); };
+    var medal = ["#ca8a04", "#94a3b8", "#b45309"];
+    return h("div", null,
+      h("div", { className: "mb-3 flex items-center justify-between" }, h("div", { className: "text-sm font-semibold text-slate-700" }, "Ranking"), periodBar()),
+      h("div", { className: "space-y-2" }, rows.map(function (x, i) { return h("div", { key: x.rec.id, className: "flex items-center gap-3 rounded-xl border px-4 py-3", style: i === 0 ? { background: "#fef9c3", borderColor: "#fde047" } : { background: "#fff", borderColor: "#e2e8f0" } }, h("div", { style: { width: "32px", height: "32px", borderRadius: "50%", background: medal[i] || "#cbd5e1", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flex: "0 0 auto" } }, i + 1), h("div", { className: "flex-1" }, h("div", { className: "text-sm font-semibold text-slate-900" }, x.rec.name, h("span", { className: "ml-2 text-xs font-medium text-amber-700" }, badges(x.rec.id))), h("div", { className: "text-xs text-slate-500" }, x.offers + " offers \u00B7 " + x.pct + "% plan \u00B7 " + x.onTime + " on-time \u00B7 " + x.screened + " screened")), h("div", { className: "text-right" }, h("div", { className: "text-lg font-bold text-slate-900" }, x.shown), h("div", { className: "text-xs text-slate-400" }, avg ? "avg/wk" : "pts"))); })),
+      h("div", { className: "mt-3 text-xs text-slate-400" }, "Score = offers \u00D710 \u00B7 plan achieved up to 30 \u00B7 on-time +2 / stuck \u22122 \u00B7 screened +0.5 (max 20). Quarter & Year rank by average per week."));
+  };
+
+  return h("div", null,
+    h(Header, { title: "Target vs Achievement", subtitle: "Daily plan, end-of-day report, reports and ranking" }),
+    h("div", { className: "mb-4 flex flex-wrap gap-1" }, tabs.map(function (t) { return h("button", { key: t[0], onClick: function () { setTab(t[0]); }, className: "rounded-lg px-3 py-1.5 text-sm " + (tab === t[0] ? "bg-slate-900 text-white" : "border border-slate-200 bg-white text-slate-600") }, t[1]); })),
+    tab === "day" && isRec ? renderDay() : null,
+    tab === "eod" ? renderEod() : null,
+    tab === "reports" ? renderReports() : null,
+    tab === "rank" ? renderRank() : null);
+}
+
+/* ===================== Dashboard (admin + HR) ===================== */
+function HrtDashboard({ db, currentUser, isAdmin, goToPosition, setView }) {
+  var h = React.createElement;
+  var today = todayISO();
+  var recruiters = db.recruiters.filter(function (r) { return r.role === "recruiter"; });
+  var mine = !isAdmin;
+  var rid = currentUser.id;
+  var stages = hrtT_stages(db);
+  var minS = hrtT_minScreen(db);
+  var wk = hrtT_range("week", today);
+  var nameOf = function (id) { var r = db.recruiters.filter(function (x) { return x.id === id; })[0]; return r ? r.name : id; };
+  var stD = React.useState(null); var drill = stD[0], setDrill = stD[1];
+
+  var scopePos = db.positions.filter(function (p) { return !mine || p.recruiterId === rid; });
+  var scopeCand = db.candidates.filter(function (c) { return !mine || c.recruiterId === rid; });
+  var openPos = scopePos.filter(function (p) { return !p.closed && !p.tempClosed && posOpen(db, p); });
+  var slaOf = function (p) { return hrtPosSLA(db, p); };
+  var withSla = openPos.map(function (p) { var x = slaOf(p); var stuckSt = x.stages.filter(function (q) { return !q.reached; })[0]; return { p: p, sla: x, stage: stuckSt ? stuckSt.stage : "", over: x.over }; });
+  var onT = withSla.filter(function (w) { return w.sla.color === "green" || w.sla.color === "done"; });
+  var slip = withSla.filter(function (w) { return w.sla.color === "yellow"; });
+  var stuck = withSla.filter(function (w) { return w.sla.color === "red"; }).sort(function (a, b) { return b.over - a.over; });
+  var offersWk = scopeCand.filter(function (c) { return c.offerDate && c.offerDate >= wk.from && c.offerDate <= wk.to; });
+  var offerTarget = mine ? 5 : recruiters.length * 5;
+  var screenedToday = []; scopeCand.forEach(function (c) { (c.log || []).forEach(function (l) { if (l && l.at === today && hrtLevel(l.text || "") === 1) screenedToday.push(c); }); });
+  var screenTarget = mine ? minS : recruiters.length * minS;
+  var live = scopeCand.filter(hrtT_live);
+  var pipe = stages.map(function (st) { return { st: st, cands: live.filter(function (c) { return hrtLevel(c.stage) === st.level; }) }; });
+
+  var posItem = function (p, sub) { return { label: hrtT_posLabel(db, p.id), sub: sub || ("Owner " + nameOf(p.recruiterId)), p: p }; };
+  var candItem = function (c) { var p = db.positions.filter(function (x) { return x.id === c.positionId; })[0]; return { label: c.name, sub: (p ? hrtT_posLabel(db, p.id) : "") + " \u00B7 " + c.stage, p: p }; };
+  var open = function (title, items) { setDrill({ title: title, items: items }); };
+
+  var num = function (v, color) { return h("span", { style: { color: color || "#4f46e5", textDecoration: "underline", textUnderlineOffset: "3px", cursor: "pointer" } }, v); };
+  var kpi = function (label, val, extra, onClick, color) { return h("div", { onClick: onClick, className: "rounded-xl border border-slate-200 bg-white px-4 py-3", style: { cursor: "pointer" } }, h("div", { className: "text-xs text-slate-400" }, label), h("div", { className: "mt-0.5 text-2xl font-bold" }, num(val, color), extra ? h("span", { className: "ml-1 text-sm font-medium text-slate-400" }, extra) : null)); };
+  var sect = function (t, hint) { return h("div", { className: "mb-2 mt-5 text-sm font-semibold text-slate-700" }, t, hint ? h("span", { className: "ml-2 text-xs font-normal text-slate-400" }, hint) : null); };
+  var redRow = function (w, showOwner) { return h("div", { key: w.p.id, onClick: function () { goToPosition(w.p); }, className: "flex items-center justify-between rounded-lg px-3 py-2 text-sm", style: { background: "#dc2626", color: "#fff", cursor: "pointer" } }, h("span", null, h("b", null, hrtT_posLabel(db, w.p.id)), showOwner ? " \u00B7 " + nameOf(w.p.recruiterId) : ""), h("span", null, (w.stage || "") + " \u00B7 +" + w.over + " days \u2192")); };
+
+  var rankRows = recruiters.map(function (rc) { var sc = hrtT_score(db, rc.id, wk); return Object.assign({ rec: rc }, sc); }).sort(function (a, b) { return b.score - a.score || b.offers - a.offers; });
+  var rankOf = function (id) { var i = rankRows.map(function (x) { return x.rec.id; }).indexOf(id); return i < 0 ? "-" : i + 1; };
+  var medal = ["#ca8a04", "#94a3b8", "#b45309"];
+
+  var planRows = function (recId, dt) { var plan = hrtT_plan(db, recId, dt); return stages.map(function (st) { var p = hrtT_planned(plan, st.level); var d = hrtT_doneOn(db, recId, st.level, dt); return { st: st, p: p, d: d }; }); };
+  var planScore = function (recId) { var rows = planRows(recId, today).filter(function (r) { return r.p > 0; }); var ok = rows.filter(function (r) { return r.d >= r.p; }).length; return rows.length ? ok + "/" + rows.length : "\u2014"; };
+
+  var pipelineBar = h("div", { style: { display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "4px" } }, pipe.map(function (x) { return h("div", { key: x.st.level, onClick: function () { open(x.st.name + " \u00B7 " + x.cands.length + " candidate(s)", x.cands.map(candItem)); }, className: "rounded-lg border border-slate-200 bg-white px-3 py-2 text-center", style: { minWidth: "78px", cursor: "pointer" } }, h("div", { className: "text-xs text-slate-400" }, x.st.name), h("div", { className: "text-lg font-bold" }, num(x.cands.length))); }));
+
+  var healthBar = h("div", null,
+    h("div", { style: { display: "flex", height: "16px", borderRadius: "8px", overflow: "hidden", background: "#e2e8f0" } }, [["g", onT.length, "#16a34a", "On target"], ["y", slip.length, "#eab308", "Slipping"], ["r", stuck.length, "#dc2626", "Stuck"]].map(function (k) { var tot = onT.length + slip.length + stuck.length; return k[1] > 0 ? h("div", { key: k[0], onClick: function () { var list = k[0] === "g" ? onT : k[0] === "y" ? slip : stuck; open(k[3] + " \u00B7 " + list.length, list.map(function (w) { return posItem(w.p, (w.stage ? w.stage + " \u00B7 " : "") + (w.over ? "+" + w.over + " days" : "on target")); })); }, style: { width: (k[1] / tot * 100) + "%", background: k[2], cursor: "pointer" } }) : null; })),
+    h("div", { className: "mt-1.5 flex gap-4 text-sm" }, h("span", { onClick: function () { open("On target \u00B7 " + onT.length, onT.map(function (w) { return posItem(w.p); })); }, style: { cursor: "pointer" } }, "On target ", num(onT.length, "#15803d")), h("span", { onClick: function () { open("Slipping \u00B7 " + slip.length, slip.map(function (w) { return posItem(w.p, w.stage + " \u00B7 +" + w.over + " days"); })); }, style: { cursor: "pointer" } }, "Slipping ", num(slip.length, "#a16207")), h("span", { onClick: function () { open("Stuck \u00B7 " + stuck.length, stuck.map(function (w) { return posItem(w.p, w.stage + " \u00B7 +" + w.over + " days"); })); }, style: { cursor: "pointer" } }, "Stuck ", num(stuck.length, "#b91c1c"))));
+
+  var body;
+  if (isAdmin) {
+    body = h("div", null,
+      h("div", { className: "grid grid-cols-2 gap-2 lg:grid-cols-4" },
+        kpi("Open positions", openPos.length, null, function () { open("Open positions \u00B7 " + openPos.length, openPos.map(function (p) { return posItem(p); })); }),
+        kpi("Offers this week", offersWk.length, "/ " + offerTarget, function () { open("Offers this week \u00B7 " + offersWk.length, offersWk.map(candItem)); }),
+        kpi("Stuck positions", stuck.length, null, function () { open("Stuck \u00B7 " + stuck.length, stuck.map(function (w) { return posItem(w.p, w.stage + " \u00B7 +" + w.over + " days"); })); }, "#dc2626"),
+        kpi("Screened today", screenedToday.length, "/ " + screenTarget, function () { open("Screened today \u00B7 " + screenedToday.length, screenedToday.map(candItem)); })),
+      sect("Pipeline \u00B7 team total", "tap a stage"), pipelineBar,
+      sect("Recruitment health", "tap a colour"), healthBar,
+      sect("Recruiters today", "tap any number"),
+      h("div", { className: "space-y-2" }, recruiters.map(function (rc) {
+        var plan = hrtT_plan(db, rc.id, today); var started = plan && plan.started; var nowH = new Date().getHours(); var closed = plan && (plan.ended || (started && nowH >= 20));
+        var myStuck = stuck.filter(function (w) { return w.p.recruiterId === rc.id; }); var myOffers = offersWk.filter(function (c) { return c.recruiterId === rc.id; });
+        var rk = rankOf(rc.id);
+        return h("div", { key: rc.id, className: "flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3" },
+          h("div", { onClick: function () { setView("tva"); }, style: { width: "28px", height: "28px", borderRadius: "50%", background: medal[rk - 1] || "#cbd5e1", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "13px", flex: "0 0 auto", cursor: "pointer" } }, rk),
+          h("div", { className: "flex-1 min-w-0" },
+            h("div", { className: "text-sm font-semibold text-slate-900" }, rc.name, " ", started ? h("span", { className: "text-xs font-medium", style: { color: closed ? "#64748b" : "#15803d" } }, closed ? "\u25CF day closed" : "\u25CF started " + String(plan.started).slice(11, 16)) : h("span", { className: "text-xs font-medium", style: { color: "#dc2626" } }, "\u25CB not started")),
+            h("div", { className: "text-xs text-slate-500" }, "Plan ", h("span", { onClick: function () { open("Today's plan \u00B7 " + rc.name, planRows(rc.id, today).map(function (r) { return { label: r.st.name, sub: "planned " + r.p + " \u00B7 done " + r.d + (r.p > 0 ? (r.d >= r.p ? " \u00B7 achieved" : " \u00B7 short " + (r.p - r.d)) : "") }; })); } }, num(planScore(rc.id))), " \u00B7 Offers ", h("span", { onClick: function () { open("Offers this week \u00B7 " + rc.name, myOffers.map(candItem)); } }, num(myOffers.length + "/5")), " \u00B7 Stuck ", h("span", { onClick: function () { open("Stuck \u00B7 " + rc.name, myStuck.map(function (w) { return posItem(w.p, w.stage + " \u00B7 +" + w.over + " days"); })); } }, num(myStuck.length, "#b91c1c")))));
+      })),
+      sect("Stuck \u2014 act today", stuck.length ? "worst first" : ""),
+      stuck.length ? h("div", { className: "space-y-1.5" }, stuck.map(function (w) { return redRow(w, true); })) : h("div", { className: "rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-400" }, "Nothing stuck. Everything is within its stage target."));
+  } else {
+    var myPlan = planRows(rid, today); var planned = myPlan.filter(function (r) { return r.p > 0; });
+    var myRank = rankOf(rid); var myScore = rankRows.filter(function (x) { return x.rec.id === rid; })[0]; var top = rankRows[0];
+    body = h("div", null,
+      h("div", { onClick: function () { open("My offers this week \u00B7 " + offersWk.length, offersWk.map(candItem)); }, className: "rounded-xl border border-slate-200 bg-white px-4 py-3", style: { cursor: "pointer" } },
+        h("div", { className: "flex items-center justify-between text-sm" }, h("b", null, "Offers this week"), h("span", null, num(offersWk.length), " / 5")),
+        h("div", { style: { height: "10px", borderRadius: "5px", background: "#e2e8f0", overflow: "hidden", marginTop: "6px" } }, h("div", { style: { width: Math.min(100, offersWk.length / 5 * 100) + "%", height: "100%", background: "#16a34a" } }))),
+      sect("Today's plan", planned.length ? planned.filter(function (r) { return r.d >= r.p; }).length + " of " + planned.length + " done \u00B7 tap a stage" : "no plan saved yet"),
+      planned.length ? h("div", { className: "space-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3" }, planned.map(function (r) { return h("div", { key: r.st.level, onClick: function () { setView("tva"); }, style: { cursor: "pointer" } }, h("div", { className: "flex justify-between text-sm" }, h("span", null, r.st.name), h("b", null, num(r.d + " / " + r.p), r.d >= r.p ? " \u2713" : "")), h("div", { style: { height: "6px", borderRadius: "3px", background: "#e2e8f0", overflow: "hidden", marginTop: "3px" } }, h("div", { style: { width: Math.min(100, r.d / r.p * 100) + "%", height: "100%", background: "#16a34a" } }))); })) : h("div", { onClick: function () { setView("tva"); }, className: "rounded-xl border border-dashed border-slate-300 bg-white px-4 py-4 text-center text-sm text-slate-500", style: { cursor: "pointer" } }, "Start your day and set today's plan \u2192"),
+      sect("My health"),
+      h("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "8px" } }, [["On target", onT, "#16a34a", "#fff"], ["Slipping", slip, "#eab308", "#1c1917"], ["Stuck", stuck, "#dc2626", "#fff"]].map(function (k) { return h("div", { key: k[0], onClick: function () { open(k[0] + " \u00B7 " + k[1].length, k[1].map(function (w) { return posItem(w.p, (w.stage ? w.stage + " \u00B7 " : "") + (w.over ? "+" + w.over + " days" : "on target")); })); }, className: "rounded-lg px-3 py-2 text-center", style: { background: k[2], color: k[3], cursor: "pointer" } }, h("div", { className: "text-xs" }, k[0]), h("div", { className: "text-xl font-bold", style: { textDecoration: "underline", textUnderlineOffset: "3px" } }, k[1].length)); })),
+      h("div", { onClick: function () { setView("tva"); }, className: "mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3", style: { cursor: "pointer" } },
+        h("div", { style: { width: "30px", height: "30px", borderRadius: "50%", background: medal[myRank - 1] || "#cbd5e1", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 } }, myRank),
+        h("div", { className: "flex-1 text-sm" }, h("b", null, "My rank this week"), " \u00B7 " + (myScore ? myScore.score : 0) + " pts"),
+        h("span", { className: "text-xs text-slate-400" }, top && top.rec.id !== rid ? (top.score - (myScore ? myScore.score : 0)) + " behind #1 \u2192" : "You're #1 \u2192")),
+      sect("My stuck positions \u2014 act now"),
+      stuck.length ? h("div", { className: "space-y-1.5" }, stuck.map(function (w) { return redRow(w, false); })) : h("div", { className: "rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-400" }, "Nothing stuck. Keep going."));
+  }
+
+  var drillModal = drill ? h("div", { className: "fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4", onClick: function () { setDrill(null); } }, h("div", { className: "my-8 w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl", onClick: function (e) { e.stopPropagation(); } },
+    h("div", { className: "flex items-center justify-between" }, h("div", { className: "text-base font-semibold text-slate-900" }, drill.title), h("button", { onClick: function () { setDrill(null); }, className: "text-slate-400" }, "\u2715")),
+    drill.items.length ? h("div", { className: "mt-3 space-y-1.5" }, drill.items.map(function (it, i) { return h("div", { key: i, onClick: it.p ? function () { setDrill(null); goToPosition(it.p); } : undefined, className: "flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm", style: { cursor: it.p ? "pointer" : "default" } }, h("div", { className: "min-w-0" }, h("div", { className: "font-medium text-slate-900" }, it.label), it.sub ? h("div", { className: "text-xs text-slate-500" }, it.sub) : null), it.p ? h("span", { className: "text-slate-400" }, "\u2192") : null); })) : h("div", { className: "mt-3 text-sm text-slate-400" }, "Nothing here."),
+    h("div", { className: "mt-2 text-xs text-slate-400" }, "Tap an item to open it."))) : null;
+
+  return h("div", null, h(Header, { title: isAdmin ? "Dashboard" : "My dashboard", subtitle: isAdmin ? "Team at a glance \u2014 every number opens its data" : "Your targets, plan, fires and rank" }), body, drillModal);
+}
 function Settings({ db, commit, isAdmin, currentUser }) {
   const lists = [["states", "States"], ["departments", "Departments"], ["designations", "Designations"]];
-  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Header, { title: "Settings", subtitle: "Team, logins, and the lists used across the app" }), isAdmin && /* @__PURE__ */ React.createElement(TeamManager, { db, commit, currentUser }), /* @__PURE__ */ React.createElement("div", { className: "grid gap-4 md:grid-cols-2" }, lists.map(([key, label]) => /* @__PURE__ */ React.createElement(EditableList, { key, label, items: db.meta[key], onChange: (items) => commit((prev) => ({ ...prev, meta: { ...prev.meta, [key]: items } })) })), /* @__PURE__ */ React.createElement(EditableList, { label: "Offer-declined reasons", items: db.reasons.offerDeclined, onChange: (items) => commit((prev) => ({ ...prev, reasons: { ...prev.reasons, offerDeclined: items } })) }), /* @__PURE__ */ React.createElement(EditableList, { label: "Attrition reasons", items: db.reasons.attrition, onChange: (items) => commit((prev) => ({ ...prev, reasons: { ...prev.reasons, attrition: items } })) })), /* @__PURE__ */ React.createElement("div", { className: "mt-6 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-slate-700" }, "Notification centre"), " \u2014 alert timing and recipients are defined with the HR team, then wired here (offer-target warnings, offer\u2192join follow-ups, and management escalation)."), isAdmin && /* @__PURE__ */ React.createElement(DeletionLog, { db }));
+  return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Header, { title: "Settings", subtitle: "Team, logins, and the lists used across the app" }), isAdmin && /* @__PURE__ */ React.createElement(TeamManager, { db, commit, currentUser }), isAdmin && /* @__PURE__ */ React.createElement(StageTimelineSettings, { db, commit }), /* @__PURE__ */ React.createElement("div", { className: "grid gap-4 md:grid-cols-2" }, lists.map(([key, label]) => /* @__PURE__ */ React.createElement(EditableList, { key, label, items: db.meta[key], onChange: (items) => commit((prev) => ({ ...prev, meta: { ...prev.meta, [key]: items } })) })), /* @__PURE__ */ React.createElement(EditableList, { label: "Offer-declined reasons", items: db.reasons.offerDeclined, onChange: (items) => commit((prev) => ({ ...prev, reasons: { ...prev.reasons, offerDeclined: items } })) }), /* @__PURE__ */ React.createElement(EditableList, { label: "Attrition reasons", items: db.reasons.attrition, onChange: (items) => commit((prev) => ({ ...prev, reasons: { ...prev.reasons, attrition: items } })) })), /* @__PURE__ */ React.createElement("div", { className: "mt-6 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-slate-700" }, "Notification centre"), " \u2014 alert timing and recipients are defined with the HR team, then wired here (offer-target warnings, offer\u2192join follow-ups, and management escalation)."), isAdmin && /* @__PURE__ */ React.createElement(DeletionLog, { db }));
 }
 function TeamManager({ db, commit, currentUser }) {
   const [name, setName] = useState("");
