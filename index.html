@@ -1182,11 +1182,42 @@ function App() {
       setReady(true);
     })();
   }, []);
-  const commit = (updater) => setDb((prev) => {
-    const next = typeof updater === "function" ? updater(prev) : updater;
-    saveDB(next);
-    return next;
-  });
+  const pendingRef = React.useRef([]);
+  const busyRef = React.useRef(false);
+  const flush = async () => {
+    if (busyRef.current || !pendingRef.current.length) return;
+    busyRef.current = true;
+    try {
+      const batch = pendingRef.current.splice(0, pendingRef.current.length);
+      let base = null;
+      try { base = await loadDB(); } catch (e) { base = null; }
+      if (!base) { setDb((cur) => { saveDB(cur); return cur; }); return; }
+      let next = base;
+      for (const u of batch) { try { next = typeof u === "function" ? u(next) : u; } catch (e) { } }
+      await saveDB(next);
+      setDb(next);
+    } finally {
+      busyRef.current = false;
+      if (pendingRef.current.length) flush();
+    }
+  };
+  const commit = (updater) => {
+    setDb((prev) => (typeof updater === "function" ? updater(prev) : updater));
+    pendingRef.current.push(updater);
+    setTimeout(flush, 0);
+  };
+  const refresh = async () => {
+    if (busyRef.current || pendingRef.current.length) return;
+    busyRef.current = true;
+    try { const fresh = await loadDB(); if (fresh && !pendingRef.current.length) setDb(fresh); } catch (e) { } finally { busyRef.current = false; }
+  };
+  React.useEffect(() => {
+    const onVis = () => { if (document.visibilityState === "visible") refresh(); };
+    const onFocus = () => refresh();
+    document.addEventListener("visibilitychange", onVis); window.addEventListener("focus", onFocus);
+    const t = setInterval(refresh, 60000);
+    return () => { document.removeEventListener("visibilitychange", onVis); window.removeEventListener("focus", onFocus); clearInterval(t); };
+  }, []);
   const login = (u) => {
     setSession(u);
     saveSession(u);
