@@ -956,6 +956,9 @@ function rowToCand(r) {
     attritionReason: r.attrition_reason || null, exitReason: r.exit_reason || null,
     interviews: r.interviews || [], log: r.log || [] };
 }
+function recToRow(r) {
+  return { id: r.id, name: r.name, role: r.role };
+}
 function delToRow(d) {
   return { id: d.id, by_id: d.byId || null, by_name: d.byName || null, designation: d.designation || null,
     department: d.department || null, state: d.state || null, city: d.city || null,
@@ -1001,7 +1004,7 @@ async function loadDB() {
       reasons: safeReasons,
       meta: safeMeta
     });
-    __hrtPrev = { candidates: keyById(db.candidates), positions: keyById(db.positions),
+    __hrtPrev = { recruiters: keyById(db.recruiters), candidates: keyById(db.candidates), positions: keyById(db.positions),
       deletionLog: keyById(db.deletionLog), employees: JSON.stringify(db.employees || []),
       futureCandidates: JSON.stringify(db.futureCandidates || []), meta: JSON.stringify(db.meta || {}), reasons: JSON.stringify(db.reasons || {}), targets: JSON.stringify(db.targets || []) };
     return db;
@@ -1017,7 +1020,7 @@ function keyById(arr) {
 }
 
 async function saveDB(db) {
-  const prev = __hrtPrev || { candidates: {}, positions: {}, deletionLog: {}, employees: "[]", futureCandidates: "[]", meta: "{}" };
+  const prev = __hrtPrev || { recruiters: {}, candidates: {}, positions: {}, deletionLog: {}, employees: "[]", futureCandidates: "[]", meta: "{}" };
   __hrtSaveChain = __hrtSaveChain.then(async () => {
     let anyFail = false;
     const doArr = async (arr, prevMap, table, toRow) => {
@@ -1037,6 +1040,7 @@ async function saveDB(db) {
     const nowCands = await doArr(db.candidates, prev.candidates, "candidates", candToRow);
     const nowPos = await doArr(db.positions, prev.positions, "positions", posToRow);
     const nowDel = await doArr(db.deletionLog, prev.deletionLog, "deletion_log", delToRow);
+    const nowRecs = await doArr(db.recruiters, prev.recruiters || {}, "recruiters", recToRow);
     // Small config blobs (employees, futureCandidates, meta) -> app_settings rows, only if changed
     const empStr = JSON.stringify(db.employees || []);
     if (empStr !== prev.employees) {
@@ -1059,7 +1063,7 @@ async function saveDB(db) {
       try { await sbUpsert("app_settings", { key: "reasons", value: db.reasons || {} }); } catch (e) { anyFail = true; }
     }
     if (!anyFail) {
-      __hrtPrev = { candidates: nowCands, positions: nowPos, deletionLog: nowDel,
+      __hrtPrev = { recruiters: nowRecs, candidates: nowCands, positions: nowPos, deletionLog: nowDel,
         employees: empStr, futureCandidates: futStr, meta: metaStr, reasons: reasonsStr, targets: targetsStr };
     }
     if (window.__hrtSyncStatus) window.__hrtSyncStatus(!anyFail);
